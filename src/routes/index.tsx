@@ -16,6 +16,11 @@ function Index() {
   useEffect(() => {
     getUnlockTime().then(setUnlock);
     setChosen(getChosenGroup());
+    // Track visit (once per page load)
+    try {
+      const did = (typeof window !== "undefined" && localStorage.getItem("gt_device_id")) || null;
+      supabase.from("site_visits").insert({ path: "/", device_id: did });
+    } catch {}
   }, []);
 
   return (
