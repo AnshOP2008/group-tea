@@ -60,6 +60,25 @@ function Admin() {
     else toast.success("Unlock time saved");
   }
 
+  async function resetAll() {
+    if (!confirm("⚠️ DELETE ALL votes, tea, and device locks? This cannot be undone.")) return;
+    if (!confirm("Are you absolutely sure? Everyone will start fresh.")) return;
+    const [v, t, d, s] = await Promise.all([
+      supabase.from("votes").delete().not("id", "is", null),
+      supabase.from("tea").delete().not("id", "is", null),
+      supabase.from("devices").delete().not("device_id", "is", null),
+      supabase.from("app_settings").update({ value: null, updated_at: new Date().toISOString() }).eq("key", "results_unlock_at"),
+    ]);
+    const err = v.error || t.error || d.error || s.error;
+    if (err) toast.error(err.message);
+    else {
+      try { localStorage.removeItem("gt_device_id"); localStorage.removeItem("gt_chosen_group"); localStorage.removeItem("gt_tea_submitted"); } catch {}
+      toast.success("All data wiped 🧼");
+      setUnlock("");
+      load();
+    }
+  }
+
   async function unlockNow() {
     const iso = new Date().toISOString();
     const { error } = await supabase.from("app_settings").update({ value: iso, updated_at: iso }).eq("key", "results_unlock_at");
@@ -109,6 +128,12 @@ function Admin() {
           <button onClick={saveUnlock} className="pastel-btn">Save</button>
           <button onClick={unlockNow} className="px-5 py-2.5 rounded-full bg-[oklch(0.9_0.1_160)] border border-border font-semibold">Unlock now</button>
         </div>
+      </section>
+
+      <section className="glass-card p-5 mt-5" style={{ background: "oklch(0.95 0.06 25 / 0.7)" }}>
+        <h2 className="font-display text-xl font-bold">🧨 Danger zone</h2>
+        <p className="text-sm text-muted-foreground mt-1">Wipes all votes, tea, and device locks. Students data is kept.</p>
+        <button onClick={resetAll} className="mt-3 px-5 py-2.5 rounded-full bg-[oklch(0.7_0.2_25)] text-white font-semibold">Reset all data</button>
       </section>
 
       <section className="mt-6">
