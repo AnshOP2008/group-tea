@@ -9,9 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitRouteImport } from './routes/wait'
+import { Route as TeaRouteImport } from './routes/tea'
 import { Route as GroupRouteImport } from './routes/group'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VoteQRouteImport } from './routes/vote.$q'
 
+const WaitRoute = WaitRouteImport.update({
+  id: '/wait',
+  path: '/wait',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeaRoute = TeaRouteImport.update({
+  id: '/tea',
+  path: '/tea',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GroupRoute = GroupRouteImport.update({
   id: '/group',
   path: '/group',
@@ -22,35 +35,66 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VoteQRoute = VoteQRouteImport.update({
+  id: '/vote/$q',
+  path: '/vote/$q',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/group'
+  fullPaths: '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/group'
-  id: '__root__' | '/' | '/group'
+  to: '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
+  id: '__root__' | '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GroupRoute: typeof GroupRoute
+  TeaRoute: typeof TeaRoute
+  WaitRoute: typeof WaitRoute
+  VoteQRoute: typeof VoteQRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wait': {
+      id: '/wait'
+      path: '/wait'
+      fullPath: '/wait'
+      preLoaderRoute: typeof WaitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tea': {
+      id: '/tea'
+      path: '/tea'
+      fullPath: '/tea'
+      preLoaderRoute: typeof TeaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/group': {
       id: '/group'
       path: '/group'
@@ -65,12 +109,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vote/$q': {
+      id: '/vote/$q'
+      path: '/vote/$q'
+      fullPath: '/vote/$q'
+      preLoaderRoute: typeof VoteQRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GroupRoute: GroupRoute,
+  TeaRoute: TeaRoute,
+  WaitRoute: WaitRoute,
+  VoteQRoute: VoteQRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
