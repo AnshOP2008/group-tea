@@ -139,6 +139,22 @@ function Admin() {
     <div className="min-h-screen max-w-5xl mx-auto px-4 py-8">
       <h1 className="font-display text-3xl font-bold">GroupTea · Admin</h1>
 
+      <section className="grid sm:grid-cols-3 gap-3 mt-5">
+        <div className="glass-card p-4">
+          <div className="text-xs text-muted-foreground">Site visits</div>
+          <div className="font-display text-3xl font-bold mt-1">{visits ?? "…"}</div>
+          <div className="text-xs text-muted-foreground mt-1">Total page loads of the home link</div>
+        </div>
+        <div className="glass-card p-4">
+          <div className="text-xs text-muted-foreground">Tea submitted</div>
+          <div className="font-display text-3xl font-bold mt-1">{tea.length}</div>
+        </div>
+        <div className="glass-card p-4">
+          <div className="text-xs text-muted-foreground">Pending moderation</div>
+          <div className="font-display text-3xl font-bold mt-1">{tea.filter(t => !t.approved && !t.rejected).length}</div>
+        </div>
+      </section>
+
       <section className="glass-card p-5 mt-5">
         <h2 className="font-display text-xl font-bold">⏰ Results unlock time</h2>
         <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -149,8 +165,20 @@ function Admin() {
             className="px-4 py-2.5 rounded-2xl bg-white/90 border border-border flex-1"
           />
           <button onClick={saveUnlock} className="pastel-btn">Save</button>
-          <button onClick={unlockNow} className="px-5 py-2.5 rounded-full bg-[oklch(0.9_0.1_160)] border border-border font-semibold">Unlock now</button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={unlockNow} className="px-5 py-2.5 rounded-full bg-[oklch(0.9_0.1_160)] border border-border font-semibold">🔓 Unlock now</button>
+          <button onClick={lockNow} className="px-5 py-2.5 rounded-full bg-[oklch(0.92_0.06_260)] border border-border font-semibold">🔒 Lock now</button>
+        </div>
+      </section>
+
+      <section className="glass-card p-5 mt-5">
+        <h2 className="font-display text-xl font-bold">🔑 Change admin password</h2>
+        <form onSubmit={changePassword} className="mt-3 flex flex-col sm:flex-row gap-2">
+          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New password" className="px-4 py-2.5 rounded-2xl bg-white/90 border border-border flex-1" />
+          <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="Confirm" className="px-4 py-2.5 rounded-2xl bg-white/90 border border-border flex-1" />
+          <button className="pastel-btn">Update</button>
+        </form>
       </section>
 
       <section className="glass-card p-5 mt-5" style={{ background: "oklch(0.95 0.06 25 / 0.7)" }}>
@@ -160,7 +188,7 @@ function Admin() {
       </section>
 
       <section className="mt-6">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(["pending", "approved", "rejected"] as const).map((f) => (
             <button
               key={f}
