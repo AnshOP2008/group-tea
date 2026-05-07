@@ -53,6 +53,27 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visits: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          path: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          path?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          path?: string | null
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           created_at: string
