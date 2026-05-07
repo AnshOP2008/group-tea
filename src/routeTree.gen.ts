@@ -9,38 +9,155 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitRouteImport } from './routes/wait'
+import { Route as TeaRouteImport } from './routes/tea'
+import { Route as ResultsRouteImport } from './routes/results'
+import { Route as GtAdminPanelX9k2SecretRouteImport } from './routes/gt-admin-panel-x9k2-secret'
+import { Route as GroupRouteImport } from './routes/group'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VoteQRouteImport } from './routes/vote.$q'
 
+const WaitRoute = WaitRouteImport.update({
+  id: '/wait',
+  path: '/wait',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeaRoute = TeaRouteImport.update({
+  id: '/tea',
+  path: '/tea',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResultsRoute = ResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GtAdminPanelX9k2SecretRoute = GtAdminPanelX9k2SecretRouteImport.update({
+  id: '/gt-admin-panel-x9k2-secret',
+  path: '/gt-admin-panel-x9k2-secret',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupRoute = GroupRouteImport.update({
+  id: '/group',
+  path: '/group',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VoteQRoute = VoteQRouteImport.update({
+  id: '/vote/$q',
+  path: '/vote/$q',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
+  '/results': typeof ResultsRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
+  '/results': typeof ResultsRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
+  '/results': typeof ResultsRoute
+  '/tea': typeof TeaRoute
+  '/wait': typeof WaitRoute
+  '/vote/$q': typeof VoteQRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
+  id:
+    | '__root__'
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GroupRoute: typeof GroupRoute
+  GtAdminPanelX9k2SecretRoute: typeof GtAdminPanelX9k2SecretRoute
+  ResultsRoute: typeof ResultsRoute
+  TeaRoute: typeof TeaRoute
+  WaitRoute: typeof WaitRoute
+  VoteQRoute: typeof VoteQRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wait': {
+      id: '/wait'
+      path: '/wait'
+      fullPath: '/wait'
+      preLoaderRoute: typeof WaitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tea': {
+      id: '/tea'
+      path: '/tea'
+      fullPath: '/tea'
+      preLoaderRoute: typeof TeaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/results': {
+      id: '/results'
+      path: '/results'
+      fullPath: '/results'
+      preLoaderRoute: typeof ResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gt-admin-panel-x9k2-secret': {
+      id: '/gt-admin-panel-x9k2-secret'
+      path: '/gt-admin-panel-x9k2-secret'
+      fullPath: '/gt-admin-panel-x9k2-secret'
+      preLoaderRoute: typeof GtAdminPanelX9k2SecretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/group': {
+      id: '/group'
+      path: '/group'
+      fullPath: '/group'
+      preLoaderRoute: typeof GroupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +165,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vote/$q': {
+      id: '/vote/$q'
+      path: '/vote/$q'
+      fullPath: '/vote/$q'
+      preLoaderRoute: typeof VoteQRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GroupRoute: GroupRoute,
+  GtAdminPanelX9k2SecretRoute: GtAdminPanelX9k2SecretRoute,
+  ResultsRoute: ResultsRoute,
+  TeaRoute: TeaRoute,
+  WaitRoute: WaitRoute,
+  VoteQRoute: VoteQRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
