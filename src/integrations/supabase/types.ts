@@ -14,7 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      devices: {
+        Row: {
+          chosen_group: number | null
+          created_at: string
+          device_id: string
+          fingerprint: string | null
+        }
+        Insert: {
+          chosen_group?: number | null
+          created_at?: string
+          device_id: string
+          fingerprint?: string | null
+        }
+        Update: {
+          chosen_group?: number | null
+          created_at?: string
+          device_id?: string
+          fingerprint?: string | null
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          created_at: string
+          group_number: number
+          id: string
+          name: string
+          roll_number: string
+        }
+        Insert: {
+          created_at?: string
+          group_number: number
+          id?: string
+          name: string
+          roll_number: string
+        }
+        Update: {
+          created_at?: string
+          group_number?: number
+          id?: string
+          name?: string
+          roll_number?: string
+        }
+        Relationships: []
+      }
+      tea: {
+        Row: {
+          approved: boolean
+          created_at: string
+          device_id: string
+          group_number: number
+          id: string
+          message: string
+          rejected: boolean
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          device_id: string
+          group_number: number
+          id?: string
+          message: string
+          rejected?: boolean
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          device_id?: string
+          group_number?: number
+          id?: string
+          message?: string
+          rejected?: boolean
+        }
+        Relationships: []
+      }
+      votes: {
+        Row: {
+          created_at: string
+          device_id: string
+          group_number: number
+          id: string
+          question: number
+          updated_at: string
+          voted_for: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          group_number: number
+          id?: string
+          question: number
+          updated_at?: string
+          voted_for: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          group_number?: number
+          id?: string
+          question?: number
+          updated_at?: string
+          voted_for?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_voted_for_fkey"
+            columns: ["voted_for"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
