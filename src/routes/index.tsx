@@ -15,12 +15,26 @@ function Index() {
   const [chosen, setChosen] = useState<number | null>(null);
   useEffect(() => {
     getUnlockTime().then(setUnlock);
-    setChosen(getChosenGroup());
+    const local = getChosenGroup();
+    setChosen(local);
     // Track visit (once per page load)
     try {
       const did = (typeof window !== "undefined" && localStorage.getItem("gt_device_id")) || null;
       supabase.from("site_visits").insert({ path: "/", device_id: did });
     } catch {}
+    // Verify the local choice still exists server-side; if data was wiped, reset local state
+    (async () => {
+      try {
+        const did = typeof window !== "undefined" ? localStorage.getItem("gt_device_id") : null;
+        if (!did || !local) return;
+        const { data } = await supabase.from("devices").select("chosen_group").eq("device_id", did).maybeSingle();
+        if (!data?.chosen_group) {
+          localStorage.removeItem("gt_chosen_group");
+          localStorage.removeItem("gt_tea_submitted");
+          setChosen(null);
+        }
+      } catch {}
+    })();
   }, []);
 
   return (
