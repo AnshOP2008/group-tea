@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaitRouteImport } from './routes/wait'
 import { Route as TeaRouteImport } from './routes/tea'
+import { Route as ResultsRouteImport } from './routes/results'
 import { Route as GroupRouteImport } from './routes/group'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VoteQRouteImport } from './routes/vote.$q'
@@ -23,6 +24,11 @@ const WaitRoute = WaitRouteImport.update({
 const TeaRoute = TeaRouteImport.update({
   id: '/tea',
   path: '/tea',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResultsRoute = ResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupRoute = GroupRouteImport.update({
@@ -44,6 +50,7 @@ const VoteQRoute = VoteQRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
   '/vote/$q': typeof VoteQRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
   '/vote/$q': typeof VoteQRoute
@@ -59,21 +67,23 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
   '/vote/$q': typeof VoteQRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
+  fullPaths: '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
-  id: '__root__' | '/' | '/group' | '/tea' | '/wait' | '/vote/$q'
+  to: '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
+  id: '__root__' | '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GroupRoute: typeof GroupRoute
+  ResultsRoute: typeof ResultsRoute
   TeaRoute: typeof TeaRoute
   WaitRoute: typeof WaitRoute
   VoteQRoute: typeof VoteQRoute
@@ -93,6 +103,13 @@ declare module '@tanstack/react-router' {
       path: '/tea'
       fullPath: '/tea'
       preLoaderRoute: typeof TeaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/results': {
+      id: '/results'
+      path: '/results'
+      fullPath: '/results'
+      preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/group': {
@@ -122,6 +139,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GroupRoute: GroupRoute,
+  ResultsRoute: ResultsRoute,
   TeaRoute: TeaRoute,
   WaitRoute: WaitRoute,
   VoteQRoute: VoteQRoute,
