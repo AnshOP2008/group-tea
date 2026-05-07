@@ -16,6 +16,9 @@ function Admin() {
   const [tea, setTea] = useState<Tea[]>([]);
   const [unlock, setUnlock] = useState<string>("");
   const [filter, setFilter] = useState<"pending" | "approved" | "rejected">("pending");
+  const [visits, setVisits] = useState<number | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
 
   async function tryLogin(e: React.FormEvent) {
     e.preventDefault();
