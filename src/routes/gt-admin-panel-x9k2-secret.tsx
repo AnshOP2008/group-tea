@@ -34,16 +34,19 @@ function Admin() {
   }
 
   async function load() {
-    const [t, s] = await Promise.all([
+    const [t, s, v] = await Promise.all([
       supabase.from("tea").select("*").order("created_at", { ascending: false }),
       supabase.from("app_settings").select("value").eq("key", "results_unlock_at").maybeSingle(),
+      supabase.from("site_visits").select("*", { count: "exact", head: true }),
     ]);
     setTea((t.data || []) as Tea[]);
+    setVisits(v.count ?? 0);
     if (s.data?.value) {
       const d = new Date(s.data.value);
-      // format for datetime-local
       const pad = (n: number) => String(n).padStart(2, "0");
       setUnlock(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    } else {
+      setUnlock("");
     }
   }
 
