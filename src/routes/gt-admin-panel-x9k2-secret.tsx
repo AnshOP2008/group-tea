@@ -92,6 +92,23 @@ function Admin() {
     else { toast.success("Results unlocked!"); load(); }
   }
 
+  async function lockNow() {
+    // Push unlock far into the future to lock results immediately
+    const future = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const { error } = await supabase.from("app_settings").update({ value: future, updated_at: new Date().toISOString() }).eq("key", "results_unlock_at");
+    if (error) toast.error(error.message);
+    else { toast.success("Results locked 🔒"); load(); }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPw || newPw.length < 4) return toast.error("Password too short");
+    if (newPw !== confirmPw) return toast.error("Passwords don't match");
+    const { error } = await supabase.from("app_settings").update({ value: newPw, updated_at: new Date().toISOString() }).eq("key", "admin_password");
+    if (error) toast.error(error.message);
+    else { toast.success("Password updated"); setNewPw(""); setConfirmPw(""); }
+  }
+
   if (!authed) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
