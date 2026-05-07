@@ -130,6 +130,12 @@ function Admin() {
         </div>
       </section>
 
+      <section className="glass-card p-5 mt-5" style={{ background: "oklch(0.95 0.06 25 / 0.7)" }}>
+        <h2 className="font-display text-xl font-bold">🧨 Danger zone</h2>
+        <p className="text-sm text-muted-foreground mt-1">Wipes all votes, tea, and device locks. Students data is kept.</p>
+        <button onClick={resetAll} className="mt-3 px-5 py-2.5 rounded-full bg-[oklch(0.7_0.2_25)] text-white font-semibold">Reset all data</button>
+      </section>
+
       <section className="mt-6">
         <div className="flex gap-2">
           {(["pending", "approved", "rejected"] as const).map((f) => (
