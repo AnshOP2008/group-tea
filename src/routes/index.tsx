@@ -32,6 +32,9 @@ function Index() {
           <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-tight">
             Spill the tea, gently.
           </h1>
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 border border-border text-xs font-medium">
+            🔒 Everything here is 100% anonymous — no names, no tracking
+          </div>
           <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
             Get to know your group one last time — vote on three questions and drop one anonymous tea. See where your batch stands when results unlock.
           </p>
