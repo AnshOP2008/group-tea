@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaitRouteImport } from './routes/wait'
 import { Route as TeaRouteImport } from './routes/tea'
 import { Route as ResultsRouteImport } from './routes/results'
+import { Route as GtAdminPanelX9k2SecretRouteImport } from './routes/gt-admin-panel-x9k2-secret'
 import { Route as GroupRouteImport } from './routes/group'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VoteQRouteImport } from './routes/vote.$q'
@@ -29,6 +30,11 @@ const TeaRoute = TeaRouteImport.update({
 const ResultsRoute = ResultsRouteImport.update({
   id: '/results',
   path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GtAdminPanelX9k2SecretRoute = GtAdminPanelX9k2SecretRouteImport.update({
+  id: '/gt-admin-panel-x9k2-secret',
+  path: '/gt-admin-panel-x9k2-secret',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupRoute = GroupRouteImport.update({
@@ -50,6 +56,7 @@ const VoteQRoute = VoteQRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
   '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
   '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/group': typeof GroupRoute
+  '/gt-admin-panel-x9k2-secret': typeof GtAdminPanelX9k2SecretRoute
   '/results': typeof ResultsRoute
   '/tea': typeof TeaRoute
   '/wait': typeof WaitRoute
@@ -74,15 +83,38 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
+  fullPaths:
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
-  id: '__root__' | '/' | '/group' | '/results' | '/tea' | '/wait' | '/vote/$q'
+  to:
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
+  id:
+    | '__root__'
+    | '/'
+    | '/group'
+    | '/gt-admin-panel-x9k2-secret'
+    | '/results'
+    | '/tea'
+    | '/wait'
+    | '/vote/$q'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GroupRoute: typeof GroupRoute
+  GtAdminPanelX9k2SecretRoute: typeof GtAdminPanelX9k2SecretRoute
   ResultsRoute: typeof ResultsRoute
   TeaRoute: typeof TeaRoute
   WaitRoute: typeof WaitRoute
@@ -112,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gt-admin-panel-x9k2-secret': {
+      id: '/gt-admin-panel-x9k2-secret'
+      path: '/gt-admin-panel-x9k2-secret'
+      fullPath: '/gt-admin-panel-x9k2-secret'
+      preLoaderRoute: typeof GtAdminPanelX9k2SecretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/group': {
       id: '/group'
       path: '/group'
@@ -139,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GroupRoute: GroupRoute,
+  GtAdminPanelX9k2SecretRoute: GtAdminPanelX9k2SecretRoute,
   ResultsRoute: ResultsRoute,
   TeaRoute: TeaRoute,
   WaitRoute: WaitRoute,
