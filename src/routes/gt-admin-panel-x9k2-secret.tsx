@@ -60,6 +60,25 @@ function Admin() {
     else toast.success("Unlock time saved");
   }
 
+  async function resetAll() {
+    if (!confirm("⚠️ DELETE ALL votes, tea, and device locks? This cannot be undone.")) return;
+    if (!confirm("Are you absolutely sure? Everyone will start fresh.")) return;
+    const [v, t, d, s] = await Promise.all([
+      supabase.from("votes").delete().not("id", "is", null),
+      supabase.from("tea").delete().not("id", "is", null),
+      supabase.from("devices").delete().not("device_id", "is", null),
+      supabase.from("app_settings").update({ value: null, updated_at: new Date().toISOString() }).eq("key", "results_unlock_at"),
+    ]);
+    const err = v.error || t.error || d.error || s.error;
+    if (err) toast.error(err.message);
+    else {
+      try { localStorage.removeItem("gt_device_id"); localStorage.removeItem("gt_chosen_group"); localStorage.removeItem("gt_tea_submitted"); } catch {}
+      toast.success("All data wiped 🧼");
+      setUnlock("");
+      load();
+    }
+  }
+
   async function unlockNow() {
     const iso = new Date().toISOString();
     const { error } = await supabase.from("app_settings").update({ value: iso, updated_at: iso }).eq("key", "results_unlock_at");
