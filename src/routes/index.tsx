@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Countdown } from "@/components/Countdown";
 import { getUnlockTime } from "@/lib/settings";
 import { getChosenGroup } from "@/lib/device";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Index,
