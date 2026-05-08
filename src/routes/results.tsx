@@ -29,19 +29,21 @@ function Results() {
   const [allStudents, setAllStudents] = useState<Student[]>([]);
 
   useEffect(() => {
-    getUnlockTime().then((t) => {
+    getUnlockTime().then(async (t) => {
       setUnlock(t);
-      setOpen(isUnlocked(t));
+      setOpen(await isUnlockedServer(t));
     });
-    const id = setInterval(() => {
-      setOpen((prev) => prev || (unlock ? isUnlocked(unlock) : false));
+    const id = setInterval(async () => {
+      if (!unlock) return;
+      const ok = await isUnlockedServer(unlock);
+      setOpen((prev) => prev || ok);
     }, 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (unlock) setOpen(isUnlocked(unlock));
+    if (unlock) isUnlockedServer(unlock).then((ok) => setOpen(ok));
   }, [unlock]);
 
   useEffect(() => {
@@ -54,11 +56,13 @@ function Results() {
     Promise.all([
       supabase.from("students").select("*").eq("group_number", group),
       supabase.from("votes").select("question,voted_for,group_number").eq("group_number", group),
-      supabase.from("tea").select("id,group_number,message,created_at").eq("group_number", group).eq("approved", true).order("created_at", { ascending: false }),
-    ]).then(([s, v, t]) => {
+      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("group_number", group).eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+    ]).then(([s, v, t, ta]) => {
       setStudents((s.data || []) as Student[]);
       setVotes((v.data || []) as Vote[]);
       setTea((t.data || []) as Tea[]);
+      setAllTea((ta.data || []) as Tea[]);
       setLoading(false);
     });
   }, [group, open]);
