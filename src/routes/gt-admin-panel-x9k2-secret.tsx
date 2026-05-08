@@ -210,23 +210,7 @@ function Admin() {
 
         <div className="mt-4 grid sm:grid-cols-2 gap-3">
           {filtered.length === 0 && <div className="text-muted-foreground">Nothing here.</div>}
-          {filtered.map((t) => (
-            <div key={t.id} className="glass-card p-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="chip">Group {t.group_number}</span>
-                <span>{new Date(t.created_at).toLocaleString()}</span>
-              </div>
-              <p className="mt-2">{t.message}</p>
-              <div className="mt-3 flex gap-2">
-                {!t.approved && (
-                  <button onClick={() => moderate(t.id, true)} className="px-4 py-2 rounded-full bg-[oklch(0.9_0.1_160)] font-semibold text-sm">✓ Approve</button>
-                )}
-                {!t.rejected && (
-                  <button onClick={() => moderate(t.id, false)} className="px-4 py-2 rounded-full bg-[oklch(0.92_0.08_25)] font-semibold text-sm">✗ Reject</button>
-                )}
-              </div>
-            </div>
-          ))}
+          {filtered.map((t) => <TeaCard key={t.id} t={t} moderate={moderate} setPriority={setPriority} />)}
         </div>
       </section>
     </div>
