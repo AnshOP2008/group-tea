@@ -70,8 +70,11 @@ function GroupSelect() {
         <div className="animate-fade-up">
           <h1 className="font-display text-3xl font-bold">Which group are you in?</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            You can only participate in one group per device. Choose carefully — this locks for good.
+            You can pick a group each round. You get up to {MAX_TEA} tea attempts per device — and yes, you can change groups between attempts.
           </p>
+          <div className="mt-2 text-xs chip inline-block">
+            {Math.max(0, MAX_TEA - teaCount)} of {MAX_TEA} attempts left
+          </div>
         </div>
 
         {incog && (
@@ -80,25 +83,34 @@ function GroupSelect() {
           </div>
         )}
 
-        {existing && (
+        {reachedLimit && (
           <div className="mt-4 glass-card p-4 text-sm">
-            You're locked into <b>Group {existing}</b> on this device.{" "}
-            <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+            ✅ You've used all {MAX_TEA} attempts. Thanks for playing!
+          </div>
+        )}
+
+        {existing && !reachedLimit && (
+          <div className="mt-4 glass-card p-4 text-sm">
+            Last picked: <b>Group {existing}</b>.{" "}
+            {teaCount > 0 ? (
+              <Link to="/tea" className="underline font-semibold">Continue to tea →</Link>
+            ) : (
+              <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+            )}
           </div>
         )}
 
         <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 gap-3">
           {Array.from({ length: 24 }, (_, i) => i + 1).map((g) => {
             const isPicked = existing === g;
-            const disabled = !!existing && existing !== g;
             return (
               <button
                 key={g}
-                disabled={busy || disabled}
+                disabled={busy || reachedLimit}
                 onClick={() => pick(g)}
                 className={`relative aspect-square rounded-2xl font-display text-2xl font-bold transition-all
                   ${isPicked ? "bg-gradient-to-br from-[oklch(0.78_0.13_305)] to-[oklch(0.82_0.1_340)] text-white shadow-[var(--shadow-soft)]" :
-                    disabled ? "bg-muted/60 text-muted-foreground" :
+                    reachedLimit ? "bg-muted/60 text-muted-foreground" :
                     "bg-white/80 hover:bg-white border border-border hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"}`}
               >
                 {g}
