@@ -10,28 +10,35 @@ export const Route = createFileRoute("/group")({
 });
 
 function GroupSelect() {
+  const MAX_TEA = 5;
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [existing, setExisting] = useState<number | null>(null);
   const [incog, setIncog] = useState(false);
+  const [teaCount, setTeaCount] = useState<number>(0);
 
   useEffect(() => {
     setExisting(getChosenGroup());
     isLikelyIncognito().then(setIncog);
-    // also check server-side
     (async () => {
       const id = getDeviceId();
-      const { data } = await supabase.from("devices").select("chosen_group").eq("device_id", id).maybeSingle();
+      const [{ data }, { count }] = await Promise.all([
+        supabase.from("devices").select("chosen_group").eq("device_id", id).maybeSingle(),
+        supabase.from("tea").select("id", { count: "exact", head: true }).eq("device_id", id),
+      ]);
       if (data?.chosen_group) {
         setExisting(data.chosen_group);
         setChosenGroup(data.chosen_group);
       }
+      setTeaCount(count ?? 0);
     })();
   }, []);
 
+  const reachedLimit = teaCount >= MAX_TEA;
+
   async function pick(g: number) {
-    if (existing && existing !== g) {
-      toast("You're already locked into Group " + existing + " on this device 💜");
+    if (reachedLimit) {
+      toast("You've used all 5 attempts on this device 💜");
       return;
     }
     setBusy(true);
@@ -48,7 +55,12 @@ function GroupSelect() {
       return;
     }
     setChosenGroup(g);
-    nav({ to: "/vote/$q", params: { q: "1" } });
+    // If they've already voted (tea count > 0 means they completed a round before), skip to tea.
+    if (teaCount > 0) {
+      nav({ to: "/tea" });
+    } else {
+      nav({ to: "/vote/$q", params: { q: "1" } });
+    }
   }
 
   return (
