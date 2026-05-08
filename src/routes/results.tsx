@@ -166,7 +166,23 @@ function Results() {
         {loading ? (
           <div className="mt-10 text-center text-muted-foreground">Loading…</div>
         ) : tab === "tea" ? (
-          <TeaList tea={tea} />
+          <>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setTeaScope("this")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition ${teaScope === "this" ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "bg-white/70 border border-border"}`}
+              >
+                This group
+              </button>
+              <button
+                onClick={() => setTeaScope("all")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition ${teaScope === "all" ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "bg-white/70 border border-border"}`}
+              >
+                All groups
+              </button>
+            </div>
+            <TeaList tea={teaScope === "this" ? tea : allTea} showGroup={teaScope === "all"} />
+          </>
         ) : (
           <RankingList list={rankings[qIdx!]} title={QUESTIONS[qIdx! - 1].label} emoji={QUESTIONS[qIdx! - 1].emoji} />
         )}
