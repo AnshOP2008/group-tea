@@ -245,13 +245,19 @@ function RankingList({ list, title, emoji }: { list: { student: Student; count: 
   );
 }
 
-function TeaList({ tea }: { tea: Tea[] }) {
+function TeaList({ tea, showGroup = false }: { tea: Tea[]; showGroup?: boolean }) {
   if (tea.length === 0) return <div className="mt-10 text-center text-muted-foreground">No tea served yet ☕</div>;
   return (
     <div className="mt-5 grid sm:grid-cols-2 gap-3">
       {tea.map((t, i) => (
         <div key={t.id} className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
-          <div className="text-2xl">☕</div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl">☕</div>
+            <div className="flex items-center gap-2">
+              {showGroup && <span className="chip text-xs">Group {t.group_number}</span>}
+              {t.priority != null && <span className="chip text-xs">#{t.priority}</span>}
+            </div>
+          </div>
           <p className="mt-1 leading-snug">{t.message}</p>
           <div className="mt-2 text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
         </div>
