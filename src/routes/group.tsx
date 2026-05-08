@@ -10,28 +10,35 @@ export const Route = createFileRoute("/group")({
 });
 
 function GroupSelect() {
+  const MAX_TEA = 5;
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [existing, setExisting] = useState<number | null>(null);
   const [incog, setIncog] = useState(false);
+  const [teaCount, setTeaCount] = useState<number>(0);
 
   useEffect(() => {
     setExisting(getChosenGroup());
     isLikelyIncognito().then(setIncog);
-    // also check server-side
     (async () => {
       const id = getDeviceId();
-      const { data } = await supabase.from("devices").select("chosen_group").eq("device_id", id).maybeSingle();
+      const [{ data }, { count }] = await Promise.all([
+        supabase.from("devices").select("chosen_group").eq("device_id", id).maybeSingle(),
+        supabase.from("tea").select("id", { count: "exact", head: true }).eq("device_id", id),
+      ]);
       if (data?.chosen_group) {
         setExisting(data.chosen_group);
         setChosenGroup(data.chosen_group);
       }
+      setTeaCount(count ?? 0);
     })();
   }, []);
 
+  const reachedLimit = teaCount >= MAX_TEA;
+
   async function pick(g: number) {
-    if (existing && existing !== g) {
-      toast("You're already locked into Group " + existing + " on this device 💜");
+    if (reachedLimit) {
+      toast("You've used all 5 attempts on this device 💜");
       return;
     }
     setBusy(true);
@@ -48,7 +55,12 @@ function GroupSelect() {
       return;
     }
     setChosenGroup(g);
-    nav({ to: "/vote/$q", params: { q: "1" } });
+    // If they've already voted (tea count > 0 means they completed a round before), skip to tea.
+    if (teaCount > 0) {
+      nav({ to: "/tea" });
+    } else {
+      nav({ to: "/vote/$q", params: { q: "1" } });
+    }
   }
 
   return (
@@ -58,8 +70,11 @@ function GroupSelect() {
         <div className="animate-fade-up">
           <h1 className="font-display text-3xl font-bold">Which group are you in?</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            You can only participate in one group per device. Choose carefully — this locks for good.
+            You can pick a group each round. You get up to {MAX_TEA} tea attempts per device — and yes, you can change groups between attempts.
           </p>
+          <div className="mt-2 text-xs chip inline-block">
+            {Math.max(0, MAX_TEA - teaCount)} of {MAX_TEA} attempts left
+          </div>
         </div>
 
         {incog && (
@@ -68,25 +83,34 @@ function GroupSelect() {
           </div>
         )}
 
-        {existing && (
+        {reachedLimit && (
           <div className="mt-4 glass-card p-4 text-sm">
-            You're locked into <b>Group {existing}</b> on this device.{" "}
-            <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+            ✅ You've used all {MAX_TEA} attempts. Thanks for playing!
+          </div>
+        )}
+
+        {existing && !reachedLimit && (
+          <div className="mt-4 glass-card p-4 text-sm">
+            Last picked: <b>Group {existing}</b>.{" "}
+            {teaCount > 0 ? (
+              <Link to="/tea" className="underline font-semibold">Continue to tea →</Link>
+            ) : (
+              <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+            )}
           </div>
         )}
 
         <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 gap-3">
           {Array.from({ length: 24 }, (_, i) => i + 1).map((g) => {
             const isPicked = existing === g;
-            const disabled = !!existing && existing !== g;
             return (
               <button
                 key={g}
-                disabled={busy || disabled}
+                disabled={busy || reachedLimit}
                 onClick={() => pick(g)}
                 className={`relative aspect-square rounded-2xl font-display text-2xl font-bold transition-all
                   ${isPicked ? "bg-gradient-to-br from-[oklch(0.78_0.13_305)] to-[oklch(0.82_0.1_340)] text-white shadow-[var(--shadow-soft)]" :
-                    disabled ? "bg-muted/60 text-muted-foreground" :
+                    reachedLimit ? "bg-muted/60 text-muted-foreground" :
                     "bg-white/80 hover:bg-white border border-border hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"}`}
               >
                 {g}
