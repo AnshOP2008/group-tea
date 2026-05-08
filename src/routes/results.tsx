@@ -12,7 +12,7 @@ export const Route = createFileRoute("/results")({
 
 type Student = { id: string; name: string; roll_number: string; group_number: number };
 type Vote = { question: number; voted_for: string; group_number: number };
-type Tea = { id: string; group_number: number; message: string; created_at: string };
+type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null };
 
 function Results() {
   const [unlock, setUnlock] = useState<Date | null>(null);
