@@ -7,7 +7,7 @@ export const Route = createFileRoute("/gt-admin-panel-x9k2-secret")({
   component: Admin,
 });
 
-type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string };
+type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null };
 
 function Admin() {
   const [authed, setAuthed] = useState(false);
