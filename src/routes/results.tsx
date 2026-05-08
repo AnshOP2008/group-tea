@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Countdown } from "@/components/Countdown";
 import { supabase } from "@/integrations/supabase/client";
-import { getUnlockTime, isUnlocked } from "@/lib/settings";
+import { getUnlockTime, isUnlocked, isUnlockedServer } from "@/lib/settings";
 import { QUESTIONS } from "@/lib/questions";
 
 export const Route = createFileRoute("/results")({
