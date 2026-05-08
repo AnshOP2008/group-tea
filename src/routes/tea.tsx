@@ -98,6 +98,12 @@ function TeaSubmit() {
           )}
         </div>
 
+        {!done && count !== null && count > 0 && (
+          <div className="mt-4 text-center text-sm">
+            <Link to="/group" className="underline text-muted-foreground">Pick a different group for your next tea →</Link>
+          </div>
+        )}
+
         <div className="mt-6 text-center">
           <Link to="/wait" className="underline text-sm text-muted-foreground">See countdown →</Link>
         </div>
