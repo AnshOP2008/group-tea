@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Countdown } from "@/components/Countdown";
 import { supabase } from "@/integrations/supabase/client";
-import { getUnlockTime, isUnlocked } from "@/lib/settings";
+import { getUnlockTime, isUnlockedServer } from "@/lib/settings";
 import { QUESTIONS } from "@/lib/questions";
 
 export const Route = createFileRoute("/results")({
@@ -12,34 +12,38 @@ export const Route = createFileRoute("/results")({
 
 type Student = { id: string; name: string; roll_number: string; group_number: number };
 type Vote = { question: number; voted_for: string; group_number: number };
-type Tea = { id: string; group_number: number; message: string; created_at: string };
+type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null };
 
 function Results() {
   const [unlock, setUnlock] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<number>(1);
   const [tab, setTab] = useState<"q1" | "q2" | "q3" | "tea">("q1");
+  const [teaScope, setTeaScope] = useState<"this" | "all">("this");
   const [students, setStudents] = useState<Student[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [tea, setTea] = useState<Tea[]>([]);
+  const [allTea, setAllTea] = useState<Tea[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentSearch, setStudentSearch] = useState("");
   const [allStudents, setAllStudents] = useState<Student[]>([]);
 
   useEffect(() => {
-    getUnlockTime().then((t) => {
+    getUnlockTime().then(async (t) => {
       setUnlock(t);
-      setOpen(isUnlocked(t));
+      setOpen(await isUnlockedServer(t));
     });
-    const id = setInterval(() => {
-      setOpen((prev) => prev || (unlock ? isUnlocked(unlock) : false));
+    const id = setInterval(async () => {
+      if (!unlock) return;
+      const ok = await isUnlockedServer(unlock);
+      setOpen((prev) => prev || ok);
     }, 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (unlock) setOpen(isUnlocked(unlock));
+    if (unlock) isUnlockedServer(unlock).then((ok) => setOpen(ok));
   }, [unlock]);
 
   useEffect(() => {
@@ -52,11 +56,13 @@ function Results() {
     Promise.all([
       supabase.from("students").select("*").eq("group_number", group),
       supabase.from("votes").select("question,voted_for,group_number").eq("group_number", group),
-      supabase.from("tea").select("id,group_number,message,created_at").eq("group_number", group).eq("approved", true).order("created_at", { ascending: false }),
-    ]).then(([s, v, t]) => {
+      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("group_number", group).eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+    ]).then(([s, v, t, ta]) => {
       setStudents((s.data || []) as Student[]);
       setVotes((v.data || []) as Vote[]);
       setTea((t.data || []) as Tea[]);
+      setAllTea((ta.data || []) as Tea[]);
       setLoading(false);
     });
   }, [group, open]);
@@ -160,7 +166,23 @@ function Results() {
         {loading ? (
           <div className="mt-10 text-center text-muted-foreground">Loading…</div>
         ) : tab === "tea" ? (
-          <TeaList tea={tea} />
+          <>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setTeaScope("this")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition ${teaScope === "this" ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "bg-white/70 border border-border"}`}
+              >
+                This group
+              </button>
+              <button
+                onClick={() => setTeaScope("all")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition ${teaScope === "all" ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "bg-white/70 border border-border"}`}
+              >
+                All groups
+              </button>
+            </div>
+            <TeaList tea={teaScope === "this" ? tea : allTea} showGroup={teaScope === "all"} />
+          </>
         ) : (
           <RankingList list={rankings[qIdx!]} title={QUESTIONS[qIdx! - 1].label} emoji={QUESTIONS[qIdx! - 1].emoji} />
         )}
@@ -223,13 +245,19 @@ function RankingList({ list, title, emoji }: { list: { student: Student; count: 
   );
 }
 
-function TeaList({ tea }: { tea: Tea[] }) {
+function TeaList({ tea, showGroup = false }: { tea: Tea[]; showGroup?: boolean }) {
   if (tea.length === 0) return <div className="mt-10 text-center text-muted-foreground">No tea served yet ☕</div>;
   return (
     <div className="mt-5 grid sm:grid-cols-2 gap-3">
       {tea.map((t, i) => (
         <div key={t.id} className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
-          <div className="text-2xl">☕</div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl">☕</div>
+            <div className="flex items-center gap-2">
+              {showGroup && <span className="chip text-xs">Group {t.group_number}</span>}
+              {t.priority != null && <span className="chip text-xs">#{t.priority}</span>}
+            </div>
+          </div>
           <p className="mt-1 leading-snug">{t.message}</p>
           <div className="mt-2 text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
         </div>

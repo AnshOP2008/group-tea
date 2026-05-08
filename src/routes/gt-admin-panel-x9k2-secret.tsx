@@ -7,7 +7,7 @@ export const Route = createFileRoute("/gt-admin-panel-x9k2-secret")({
   component: Admin,
 });
 
-type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string };
+type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null };
 
 function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -50,13 +50,21 @@ function Admin() {
     }
   }
 
-  async function moderate(id: string, approve: boolean) {
-    const { error } = await supabase
-      .from("tea")
-      .update({ approved: approve, rejected: !approve })
-      .eq("id", id);
+  async function moderate(id: string, approve: boolean, priority?: number | null) {
+    const patch: { approved: boolean; rejected: boolean; priority?: number | null } = {
+      approved: approve,
+      rejected: !approve,
+    };
+    if (approve) patch.priority = priority ?? null;
+    const { error } = await supabase.from("tea").update(patch).eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success(approve ? "Approved" : "Rejected"); load(); }
+  }
+
+  async function setPriority(id: string, priority: number | null) {
+    const { error } = await supabase.from("tea").update({ priority }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Priority updated"); load(); }
   }
 
   async function saveUnlock() {
@@ -202,25 +210,63 @@ function Admin() {
 
         <div className="mt-4 grid sm:grid-cols-2 gap-3">
           {filtered.length === 0 && <div className="text-muted-foreground">Nothing here.</div>}
-          {filtered.map((t) => (
-            <div key={t.id} className="glass-card p-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="chip">Group {t.group_number}</span>
-                <span>{new Date(t.created_at).toLocaleString()}</span>
-              </div>
-              <p className="mt-2">{t.message}</p>
-              <div className="mt-3 flex gap-2">
-                {!t.approved && (
-                  <button onClick={() => moderate(t.id, true)} className="px-4 py-2 rounded-full bg-[oklch(0.9_0.1_160)] font-semibold text-sm">✓ Approve</button>
-                )}
-                {!t.rejected && (
-                  <button onClick={() => moderate(t.id, false)} className="px-4 py-2 rounded-full bg-[oklch(0.92_0.08_25)] font-semibold text-sm">✗ Reject</button>
-                )}
-              </div>
-            </div>
-          ))}
+          {filtered.map((t) => <TeaCard key={t.id} t={t} moderate={moderate} setPriority={setPriority} />)}
         </div>
       </section>
+    </div>
+  );
+}
+
+function TeaCard({
+  t,
+  moderate,
+  setPriority,
+}: {
+  t: Tea;
+  moderate: (id: string, approve: boolean, priority?: number | null) => void;
+  setPriority: (id: string, priority: number | null) => void;
+}) {
+  const [pri, setPri] = useState<string>(t.priority != null ? String(t.priority) : "");
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span className="chip">Group {t.group_number}</span>
+        <span>{new Date(t.created_at).toLocaleString()}</span>
+      </div>
+      <p className="mt-2">{t.message}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="number"
+          value={pri}
+          onChange={(e) => setPri(e.target.value)}
+          placeholder="Priority #"
+          className="w-28 px-3 py-2 rounded-full bg-white/90 border border-border text-sm"
+        />
+        {!t.approved && (
+          <button
+            onClick={() => moderate(t.id, true, pri === "" ? null : Number(pri))}
+            className="px-4 py-2 rounded-full bg-[oklch(0.9_0.1_160)] font-semibold text-sm"
+          >
+            ✓ Approve {pri !== "" ? `· #${pri}` : ""}
+          </button>
+        )}
+        {t.approved && (
+          <button
+            onClick={() => setPriority(t.id, pri === "" ? null : Number(pri))}
+            className="px-4 py-2 rounded-full bg-[oklch(0.92_0.06_260)] font-semibold text-sm"
+          >
+            Save priority
+          </button>
+        )}
+        {!t.rejected && (
+          <button
+            onClick={() => moderate(t.id, false)}
+            className="px-4 py-2 rounded-full bg-[oklch(0.92_0.08_25)] font-semibold text-sm"
+          >
+            ✗ Reject
+          </button>
+        )}
+      </div>
     </div>
   );
 }

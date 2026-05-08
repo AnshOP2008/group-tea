@@ -106,6 +106,7 @@ export type Database = {
           group_number: number
           id: string
           message: string
+          priority: number | null
           rejected: boolean
         }
         Insert: {
@@ -115,6 +116,7 @@ export type Database = {
           group_number: number
           id?: string
           message: string
+          priority?: number | null
           rejected?: boolean
         }
         Update: {
@@ -124,6 +126,7 @@ export type Database = {
           group_number?: number
           id?: string
           message?: string
+          priority?: number | null
           rejected?: boolean
         }
         Relationships: []

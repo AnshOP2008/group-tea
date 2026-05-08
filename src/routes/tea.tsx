@@ -2,34 +2,43 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
-import { getChosenGroup, getDeviceId, hasSubmittedTea, markTeaSubmitted } from "@/lib/device";
+import { getChosenGroup, getDeviceId } from "@/lib/device";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tea")({
   component: TeaSubmit,
 });
 
+const MAX_TEA_PER_DEVICE = 5;
+
 function TeaSubmit() {
   const nav = useNavigate();
   const [group, setGroup] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+
+  async function refreshCount() {
+    const { count: c } = await supabase
+      .from("tea")
+      .select("id", { count: "exact", head: true })
+      .eq("device_id", getDeviceId());
+    setCount(c ?? 0);
+  }
 
   useEffect(() => {
     const g = getChosenGroup();
     if (!g) { nav({ to: "/group" }); return; }
     setGroup(g);
-    if (hasSubmittedTea()) setSubmitted(true);
-    // confirm with server
-    (async () => {
-      const { data } = await supabase.from("tea").select("id").eq("device_id", getDeviceId()).maybeSingle();
-      if (data) { markTeaSubmitted(); setSubmitted(true); }
-    })();
+    refreshCount();
   }, [nav]);
 
   async function send() {
     if (!group || !msg.trim()) return;
+    if ((count ?? 0) >= MAX_TEA_PER_DEVICE) {
+      toast("You've used all 5 tea submissions for this device 💜");
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.from("tea").insert({
       device_id: getDeviceId(),
@@ -38,19 +47,16 @@ function TeaSubmit() {
     });
     setBusy(false);
     if (error) {
-      if (error.code === "23505") {
-        toast("You've already submitted tea — only one per device 💜");
-        markTeaSubmitted();
-        setSubmitted(true);
-      } else {
-        toast.error("Couldn't submit. Try again.");
-      }
+      toast.error("Couldn't submit. Try again.");
       return;
     }
-    markTeaSubmitted();
-    setSubmitted(true);
+    setMsg("");
     toast.success("Tea steeped ☕ — pending review");
+    refreshCount();
   }
+
+  const remaining = count === null ? null : Math.max(0, MAX_TEA_PER_DEVICE - count);
+  const done = remaining === 0;
 
   return (
     <div className="min-h-screen">
@@ -58,14 +64,20 @@ function TeaSubmit() {
       <main className="max-w-2xl mx-auto px-4 pt-6 pb-20">
         <div className="glass-card p-6 animate-fade-up">
           <div className="text-xs font-semibold text-muted-foreground">Group {group} · Anonymous</div>
-          <h1 className="font-display text-3xl font-bold mt-1">Spill one tea ☕</h1>
+          <h1 className="font-display text-3xl font-bold mt-1">Spill some tea ☕</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            One message per device. 150 character max. No edits, no take-backs. Be playful, not toxic — moderators review before publishing.
+            Up to {MAX_TEA_PER_DEVICE} messages per device. 150 character max each. No edits, no take-backs. Be playful, not toxic — moderators review before publishing.
           </p>
 
-          {submitted ? (
+          {remaining !== null && (
+            <div className="mt-3 text-xs chip inline-block">
+              {remaining} of {MAX_TEA_PER_DEVICE} left
+            </div>
+          )}
+
+          {done ? (
             <div className="mt-5 p-4 rounded-2xl bg-[oklch(0.93_0.07_160)]/60 border border-[oklch(0.85_0.1_160)]">
-              ✅ Your tea is in. It'll appear on the results page once approved.
+              ✅ You've used all {MAX_TEA_PER_DEVICE} submissions. Thanks for the tea!
             </div>
           ) : (
             <>
