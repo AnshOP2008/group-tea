@@ -19,9 +19,11 @@ function Results() {
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<number>(1);
   const [tab, setTab] = useState<"q1" | "q2" | "q3" | "tea">("q1");
+  const [teaScope, setTeaScope] = useState<"this" | "all">("this");
   const [students, setStudents] = useState<Student[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [tea, setTea] = useState<Tea[]>([]);
+  const [allTea, setAllTea] = useState<Tea[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentSearch, setStudentSearch] = useState("");
   const [allStudents, setAllStudents] = useState<Student[]>([]);
