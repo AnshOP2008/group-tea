@@ -50,13 +50,21 @@ function Admin() {
     }
   }
 
-  async function moderate(id: string, approve: boolean) {
-    const { error } = await supabase
-      .from("tea")
-      .update({ approved: approve, rejected: !approve })
-      .eq("id", id);
+  async function moderate(id: string, approve: boolean, priority?: number | null) {
+    const patch: { approved: boolean; rejected: boolean; priority?: number | null } = {
+      approved: approve,
+      rejected: !approve,
+    };
+    if (approve) patch.priority = priority ?? null;
+    const { error } = await supabase.from("tea").update(patch).eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success(approve ? "Approved" : "Rejected"); load(); }
+  }
+
+  async function setPriority(id: string, priority: number | null) {
+    const { error } = await supabase.from("tea").update({ priority }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Priority updated"); load(); }
   }
 
   async function saveUnlock() {
