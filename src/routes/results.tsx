@@ -92,8 +92,9 @@ function Results() {
     const sorter = (a: TeaWithScore, b: TeaWithScore) => {
       const ap = a.priority ?? Number.POSITIVE_INFINITY;
       const bp = b.priority ?? Number.POSITIVE_INFINITY;
-      if (ap !== bp) return ap - bp;
+      
       if (b.score !== a.score) return b.score - a.score;
+      if (ap !== bp) return ap - bp;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     };
     tw.sort(sorter); taw.sort(sorter);
