@@ -40,7 +40,7 @@ function Admin() {
       supabase.from("tea").select("*").order("created_at", { ascending: false }),
       supabase.from("app_settings").select("value").eq("key", "results_unlock_at").maybeSingle(),
       supabase.from("site_visits").select("*", { count: "exact", head: true }),
-      supabase.from("tea_comments").select("id,tea_id,message,created_at,deleted,parent_id").order("created_at", { ascending: false }).limit(50),
+      supabase.from("tea_comments").select("id,tea_id,message,created_at,deleted,parent_id").order("created_at", { ascending: false }),
     ]);
     const teaList = (t.data || []) as Tea[];
     setTea(teaList);
@@ -215,7 +215,7 @@ function Admin() {
       <section className="glass-card p-5 mt-5">
         <h2 className="font-display text-xl font-bold">💬 Latest comments</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Newest first (top 50). Hiding a comment removes it (and its whole reply thread) for users. You can restore it.
+          Newest first . Hiding a comment removes it (and its whole reply thread) for users. You can restore it.
         </p>
         <div className="mt-3 space-y-2 max-h-96 overflow-y-auto">
           {recentComments.length === 0 && <div className="text-sm text-muted-foreground">No comments yet.</div>}
