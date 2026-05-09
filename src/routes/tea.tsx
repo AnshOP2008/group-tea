@@ -47,7 +47,7 @@ function TeaSubmit() {
     const { error } = await supabase.from("tea").insert({
       device_id: getDeviceId(),
       group_number: group,
-      message: msg.trim().slice(0, 150),
+      message: msg.trim().slice(0, 300),
     });
     setBusy(false);
     if (error) {
