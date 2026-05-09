@@ -134,29 +134,74 @@ export type Database = {
         }
         Relationships: []
       }
-      tea_comments: {
+      tea_comment_votes: {
         Row: {
+          comment_id: string
           created_at: string
           device_id: string
           id: string
+          value: number
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          device_id: string
+          id?: string
+          value?: number
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tea_comment_votes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "tea_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tea_comments: {
+        Row: {
+          created_at: string
+          deleted: boolean
+          device_id: string
+          id: string
           message: string
+          parent_id: string | null
           tea_id: string
         }
         Insert: {
           created_at?: string
+          deleted?: boolean
           device_id: string
           id?: string
           message: string
+          parent_id?: string | null
           tea_id: string
         }
         Update: {
           created_at?: string
+          deleted?: boolean
           device_id?: string
           id?: string
           message?: string
+          parent_id?: string | null
           tea_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tea_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tea_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tea_comments_tea_id_fkey"
             columns: ["tea_id"]
@@ -172,18 +217,21 @@ export type Database = {
           device_id: string
           id: string
           tea_id: string
+          value: number
         }
         Insert: {
           created_at?: string
           device_id: string
           id?: string
           tea_id: string
+          value?: number
         }
         Update: {
           created_at?: string
           device_id?: string
           id?: string
           tea_id?: string
+          value?: number
         }
         Relationships: [
           {
