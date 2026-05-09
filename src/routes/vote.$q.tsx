@@ -58,7 +58,7 @@ function VoteScreen() {
       .from("votes")
       .upsert(
         { device_id, question: qNum, voted_for: selected, group_number: chosenGroup, updated_at: new Date().toISOString() },
-        { onConflict: "device_id,question" }
+        { onConflict: "device_id,group_number,question" }
       );
     setSaving(false);
     if (error) {
