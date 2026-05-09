@@ -12,7 +12,7 @@ export const Route = createFileRoute("/results")({
 
 type Student = { id: string; name: string; roll_number: string; group_number: number };
 type Vote = { question: number; voted_for: string; group_number: number };
-type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null };
+type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null; comments_closed: boolean };
 
 function Results() {
   const [unlock, setUnlock] = useState<Date | null>(null);
@@ -56,8 +56,8 @@ function Results() {
     Promise.all([
       supabase.from("students").select("*").eq("group_number", group),
       supabase.from("votes").select("question,voted_for,group_number").eq("group_number", group),
-      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("group_number", group).eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
-      supabase.from("tea").select("id,group_number,message,created_at,priority").eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("group_number", group).eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
     ]).then(([s, v, t, ta]) => {
       setStudents((s.data || []) as Student[]);
       setVotes((v.data || []) as Vote[]);
@@ -250,18 +250,125 @@ function TeaList({ tea, showGroup = false }: { tea: Tea[]; showGroup?: boolean }
   return (
     <div className="mt-5 grid sm:grid-cols-2 gap-3">
       {tea.map((t, i) => (
-        <div key={t.id} className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
-          <div className="flex items-center justify-between">
-            <div className="text-2xl">☕</div>
-            <div className="flex items-center gap-2">
-              {showGroup && <span className="chip text-xs">Group {t.group_number}</span>}
-              {t.priority != null && <span className="chip text-xs">#{t.priority}</span>}
-            </div>
-          </div>
-          <p className="mt-1 leading-snug">{t.message}</p>
-          <div className="mt-2 text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
-        </div>
+        <TeaCard key={t.id} t={t} index={i} showGroup={showGroup} />
       ))}
+    </div>
+  );
+}
+
+function TeaCard({ t, index, showGroup }: { t: Tea; index: number; showGroup: boolean }) {
+  const [upCount, setUpCount] = useState(0);
+  const [upvoted, setUpvoted] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<{ id: string; message: string; created_at: string; device_id: string }[]>([]);
+  const [cmt, setCmt] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function loadUpvotes() {
+    const deviceId = (await import("@/lib/device")).getDeviceId();
+    const [{ count }, { data: mine }] = await Promise.all([
+      supabase.from("tea_upvotes").select("id", { count: "exact", head: true }).eq("tea_id", t.id),
+      supabase.from("tea_upvotes").select("id").eq("tea_id", t.id).eq("device_id", deviceId).maybeSingle(),
+    ]);
+    setUpCount(count ?? 0);
+    setUpvoted(!!mine);
+  }
+
+  async function loadComments() {
+    const { data } = await supabase
+      .from("tea_comments")
+      .select("id,message,created_at,device_id")
+      .eq("tea_id", t.id)
+      .order("created_at", { ascending: true });
+    setComments(data || []);
+  }
+
+  useEffect(() => { loadUpvotes(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { if (showComments) loadComments(); /* eslint-disable-next-line */ }, [showComments]);
+
+  async function toggleUpvote() {
+    const { getDeviceId } = await import("@/lib/device");
+    const deviceId = getDeviceId();
+    if (upvoted) {
+      await supabase.from("tea_upvotes").delete().eq("tea_id", t.id).eq("device_id", deviceId);
+    } else {
+      await supabase.from("tea_upvotes").insert({ tea_id: t.id, device_id: deviceId });
+    }
+    loadUpvotes();
+  }
+
+  async function postComment() {
+    if (!cmt.trim()) return;
+    setBusy(true);
+    const { getDeviceId } = await import("@/lib/device");
+    const { error } = await supabase.from("tea_comments").insert({
+      tea_id: t.id,
+      device_id: getDeviceId(),
+      message: cmt.trim().slice(0, 300),
+    });
+    setBusy(false);
+    if (error) { toast.error("Couldn't post"); return; }
+    setCmt("");
+    loadComments();
+  }
+
+  return (
+    <div className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${index * 30}ms` }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-display font-bold text-lg">#{index + 1}</span>
+          <span className="text-2xl">☕</span>
+        </div>
+        {showGroup && <span className="chip text-xs">Group {t.group_number}</span>}
+      </div>
+      <p className="mt-1 leading-snug">{t.message}</p>
+      <div className="mt-2 text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={toggleUpvote}
+          className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition ${
+            upvoted ? "bg-[oklch(0.85_0.15_25)] text-white border-transparent" : "bg-white/70 border-border"
+          }`}
+        >
+          {upvoted ? "❤️" : "🤍"} {upCount}
+        </button>
+        <button
+          onClick={() => setShowComments((s) => !s)}
+          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/70 border border-border"
+        >
+          💬 {showComments ? "Hide" : "Comments"}
+        </button>
+      </div>
+
+      {showComments && (
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
+            {comments.map((c) => (
+              <div key={c.id} className="text-sm bg-white/60 rounded-xl px-3 py-2">
+                <div>{c.message}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+          {t.comments_closed ? (
+            <div className="mt-2 text-xs text-muted-foreground">🔒 Comments are closed.</div>
+          ) : (
+            <div className="mt-2 flex gap-2">
+              <input
+                value={cmt}
+                onChange={(e) => setCmt(e.target.value.slice(0, 300))}
+                placeholder="Write a comment…"
+                className="flex-1 px-3 py-2 rounded-full bg-white/90 border border-border text-sm"
+              />
+              <button onClick={postComment} disabled={busy || !cmt.trim()} className="pastel-btn text-sm disabled:opacity-50">
+                Post
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
