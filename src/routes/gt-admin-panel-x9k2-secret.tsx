@@ -367,16 +367,18 @@ function TeaCard({
         <div className="mt-3 border-t border-border pt-3 space-y-2">
           {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments.</div>}
           {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2 bg-white/60 rounded-xl px-3 py-2">
+            <div key={c.id} className={`flex items-start gap-2 rounded-xl px-3 py-2 ${c.deleted ? "bg-[oklch(0.95_0.05_25)]/60 border border-[oklch(0.85_0.1_25)]" : "bg-white/60"}`}>
               <div className="flex-1 text-sm">
-                <div>{c.message}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</div>
+                <div className={c.deleted ? "line-through text-muted-foreground" : ""}>{c.message}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {new Date(c.created_at).toLocaleString()}{c.parent_id && " · reply"}{c.deleted && " · hidden"}
+                </div>
               </div>
               <button
-                onClick={() => deleteComment(c.id)}
-                className="px-2 py-1 rounded-full bg-[oklch(0.92_0.08_25)] text-xs font-semibold"
+                onClick={() => toggleDelete(c.id, c.deleted)}
+                className={`px-2 py-1 rounded-full text-xs font-semibold ${c.deleted ? "bg-[oklch(0.9_0.1_160)]" : "bg-[oklch(0.92_0.08_25)]"}`}
               >
-                Delete
+                {c.deleted ? "Restore" : "Hide"}
               </button>
             </div>
           ))}
