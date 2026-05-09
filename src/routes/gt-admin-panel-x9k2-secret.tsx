@@ -8,7 +8,7 @@ export const Route = createFileRoute("/gt-admin-panel-x9k2-secret")({
 });
 
 type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null; comments_closed: boolean };
-type Comment = { id: string; tea_id: string; message: string; created_at: string };
+type Comment = { id: string; tea_id: string; message: string; created_at: string; deleted: boolean; parent_id: string | null };
 
 function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -20,6 +20,7 @@ function Admin() {
   const [visits, setVisits] = useState<number | null>(null);
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [recentComments, setRecentComments] = useState<(Comment & { tea_message: string; tea_group: number })[]>([]);
 
   async function tryLogin(e: React.FormEvent) {
     e.preventDefault();
