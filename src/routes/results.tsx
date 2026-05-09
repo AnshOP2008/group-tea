@@ -309,11 +309,24 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
   const [down, setDown] = useState(t.down);
   const [myVote, setMyVote] = useState<number>(t.myVote);
   const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState<number>(0);
   const [tree, setTree] = useState<CommentNode[]>([]);
   const [cmt, setCmt] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { setUp(t.up); setDown(t.down); setMyVote(t.myVote); }, [t.up, t.down, t.myVote]);
+
+  // Fetch initial comment count on mount
+  useEffect(() => {
+    supabase
+      .from("tea_comments")
+      .select("id", { count: "exact", head: true })
+      .eq("tea_id", t.id)
+      .eq("deleted", false)
+      .then(({ count }) => {
+        if (count !== null) setCommentCount(count);
+      });
+  }, [t.id]);
 
   async function vote(v: 1 | -1) {
     const did = getDeviceId();
@@ -335,8 +348,8 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
     }
     // onVoteChange();
     setTimeout(() => {
-  onVoteChange();
-}, 120000);
+      onVoteChange();
+    }, 120000);
   }
 
   async function loadComments() {
@@ -403,6 +416,7 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
     setBusy(false);
     if (error) { toast.error("Couldn't post"); return; }
     if (parentId === null) setCmt("");
+    setCommentCount((c) => c + 1); // Increment count dynamically
     loadComments();
   }
 
@@ -444,7 +458,7 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
           onClick={() => setShowComments((s) => !s)}
           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/70 border border-border"
         >
-          💬 {showComments ? "Hide" : "Comments"}
+          💬 {commentCount} {showComments ? "Hide" : "Comments"}
         </button>
       </div>
 
