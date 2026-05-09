@@ -333,7 +333,10 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
       else { setDown((n) => n + 1); setUp((n) => Math.max(0, n - 1)); }
       setMyVote(v);
     }
-    onVoteChange();
+    // onVoteChange();
+    setTimeout(() => {
+  onVoteChange();
+}, 120000);
   }
 
   async function loadComments() {
