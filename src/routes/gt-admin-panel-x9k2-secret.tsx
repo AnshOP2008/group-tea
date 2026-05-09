@@ -36,13 +36,22 @@ function Admin() {
   }
 
   async function load() {
-    const [t, s, v] = await Promise.all([
+    const [t, s, v, c] = await Promise.all([
       supabase.from("tea").select("*").order("created_at", { ascending: false }),
       supabase.from("app_settings").select("value").eq("key", "results_unlock_at").maybeSingle(),
       supabase.from("site_visits").select("*", { count: "exact", head: true }),
+      supabase.from("tea_comments").select("id,tea_id,message,created_at,deleted,parent_id").order("created_at", { ascending: false }).limit(50),
     ]);
-    setTea((t.data || []) as Tea[]);
+    const teaList = (t.data || []) as Tea[];
+    setTea(teaList);
     setVisits(v.count ?? 0);
+    const teaMap = new Map(teaList.map((x) => [x.id, x]));
+    const enriched = ((c.data || []) as Comment[]).map((cm) => ({
+      ...cm,
+      tea_message: teaMap.get(cm.tea_id)?.message ?? "(unknown)",
+      tea_group: teaMap.get(cm.tea_id)?.group_number ?? 0,
+    }));
+    setRecentComments(enriched);
     if (s.data?.value) {
       const d = new Date(s.data.value);
       const pad = (n: number) => String(n).padStart(2, "0");
@@ -50,6 +59,12 @@ function Admin() {
     } else {
       setUnlock("");
     }
+  }
+
+  async function softDeleteComment(id: string, deleted: boolean) {
+    const { error } = await supabase.from("tea_comments").update({ deleted }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success(deleted ? "Comment hidden" : "Comment restored"); load(); }
   }
 
   async function moderate(id: string, approve: boolean, priority?: number | null) {
