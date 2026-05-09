@@ -5,6 +5,7 @@ import { Countdown } from "@/components/Countdown";
 import { supabase } from "@/integrations/supabase/client";
 import { getUnlockTime, isUnlockedServer } from "@/lib/settings";
 import { QUESTIONS } from "@/lib/questions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/results")({
   component: Results,
