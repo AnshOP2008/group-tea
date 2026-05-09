@@ -212,6 +212,37 @@ function Admin() {
         <button onClick={resetAll} className="mt-3 px-5 py-2.5 rounded-full bg-[oklch(0.7_0.2_25)] text-white font-semibold">Reset all data</button>
       </section>
 
+      <section className="glass-card p-5 mt-5">
+        <h2 className="font-display text-xl font-bold">💬 Latest comments</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Newest first (top 50). Hiding a comment removes it (and its whole reply thread) for users. You can restore it.
+        </p>
+        <div className="mt-3 space-y-2 max-h-96 overflow-y-auto">
+          {recentComments.length === 0 && <div className="text-sm text-muted-foreground">No comments yet.</div>}
+          {recentComments.map((c) => (
+            <div key={c.id} className={`rounded-xl px-3 py-2 border ${c.deleted ? "bg-[oklch(0.95_0.05_25)]/60 border-[oklch(0.85_0.1_25)]" : "bg-white/70 border-border"}`}>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">
+                    Group {c.tea_group} · {new Date(c.created_at).toLocaleString()}
+                    {c.parent_id && " · reply"}
+                    {c.deleted && " · hidden"}
+                  </div>
+                  <div className="text-sm mt-0.5 break-words">{c.message}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 italic truncate">on: {c.tea_message}</div>
+                </div>
+                <button
+                  onClick={() => softDeleteComment(c.id, !c.deleted)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${c.deleted ? "bg-[oklch(0.9_0.1_160)]" : "bg-[oklch(0.92_0.08_25)]"}`}
+                >
+                  {c.deleted ? "Restore" : "Hide thread"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-6">
         <div className="flex gap-2 flex-wrap">
           {(["pending", "approved", "rejected"] as const).map((f) => (
