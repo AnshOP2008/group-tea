@@ -8,7 +8,7 @@ export const Route = createFileRoute("/gt-admin-panel-x9k2-secret")({
 });
 
 type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null; comments_closed: boolean };
-type Comment = { id: string; tea_id: string; message: string; created_at: string };
+type Comment = { id: string; tea_id: string; message: string; created_at: string; deleted: boolean; parent_id: string | null };
 
 function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -20,6 +20,7 @@ function Admin() {
   const [visits, setVisits] = useState<number | null>(null);
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [recentComments, setRecentComments] = useState<(Comment & { tea_message: string; tea_group: number })[]>([]);
 
   async function tryLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -35,13 +36,22 @@ function Admin() {
   }
 
   async function load() {
-    const [t, s, v] = await Promise.all([
+    const [t, s, v, c] = await Promise.all([
       supabase.from("tea").select("*").order("created_at", { ascending: false }),
       supabase.from("app_settings").select("value").eq("key", "results_unlock_at").maybeSingle(),
       supabase.from("site_visits").select("*", { count: "exact", head: true }),
+      supabase.from("tea_comments").select("id,tea_id,message,created_at,deleted,parent_id").order("created_at", { ascending: false }).limit(50),
     ]);
-    setTea((t.data || []) as Tea[]);
+    const teaList = (t.data || []) as Tea[];
+    setTea(teaList);
     setVisits(v.count ?? 0);
+    const teaMap = new Map(teaList.map((x) => [x.id, x]));
+    const enriched = ((c.data || []) as Comment[]).map((cm) => ({
+      ...cm,
+      tea_message: teaMap.get(cm.tea_id)?.message ?? "(unknown)",
+      tea_group: teaMap.get(cm.tea_id)?.group_number ?? 0,
+    }));
+    setRecentComments(enriched);
     if (s.data?.value) {
       const d = new Date(s.data.value);
       const pad = (n: number) => String(n).padStart(2, "0");
@@ -49,6 +59,12 @@ function Admin() {
     } else {
       setUnlock("");
     }
+  }
+
+  async function softDeleteComment(id: string, deleted: boolean) {
+    const { error } = await supabase.from("tea_comments").update({ deleted }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success(deleted ? "Comment hidden" : "Comment restored"); load(); }
   }
 
   async function moderate(id: string, approve: boolean, priority?: number | null) {
@@ -196,6 +212,37 @@ function Admin() {
         <button onClick={resetAll} className="mt-3 px-5 py-2.5 rounded-full bg-[oklch(0.7_0.2_25)] text-white font-semibold">Reset all data</button>
       </section>
 
+      <section className="glass-card p-5 mt-5">
+        <h2 className="font-display text-xl font-bold">💬 Latest comments</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Newest first (top 50). Hiding a comment removes it (and its whole reply thread) for users. You can restore it.
+        </p>
+        <div className="mt-3 space-y-2 max-h-96 overflow-y-auto">
+          {recentComments.length === 0 && <div className="text-sm text-muted-foreground">No comments yet.</div>}
+          {recentComments.map((c) => (
+            <div key={c.id} className={`rounded-xl px-3 py-2 border ${c.deleted ? "bg-[oklch(0.95_0.05_25)]/60 border-[oklch(0.85_0.1_25)]" : "bg-white/70 border-border"}`}>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">
+                    Group {c.tea_group} · {new Date(c.created_at).toLocaleString()}
+                    {c.parent_id && " · reply"}
+                    {c.deleted && " · hidden"}
+                  </div>
+                  <div className="text-sm mt-0.5 break-words">{c.message}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 italic truncate">on: {c.tea_message}</div>
+                </div>
+                <button
+                  onClick={() => softDeleteComment(c.id, !c.deleted)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${c.deleted ? "bg-[oklch(0.9_0.1_160)]" : "bg-[oklch(0.92_0.08_25)]"}`}
+                >
+                  {c.deleted ? "Restore" : "Hide thread"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-6">
         <div className="flex gap-2 flex-wrap">
           {(["pending", "approved", "rejected"] as const).map((f) => (
@@ -235,7 +282,7 @@ function TeaCard({
   async function loadComments() {
     const { data } = await supabase
       .from("tea_comments")
-      .select("id,tea_id,message,created_at")
+      .select("id,tea_id,message,created_at,deleted,parent_id")
       .eq("tea_id", t.id)
       .order("created_at", { ascending: true });
     setComments((data || []) as Comment[]);
@@ -246,10 +293,10 @@ function TeaCard({
     // eslint-disable-next-line
   }, [showCmts]);
 
-  async function deleteComment(id: string) {
-    const { error } = await supabase.from("tea_comments").delete().eq("id", id);
+  async function toggleDelete(id: string, deleted: boolean) {
+    const { error } = await supabase.from("tea_comments").update({ deleted: !deleted }).eq("id", id);
     if (error) toast.error(error.message);
-    else { toast.success("Comment deleted"); loadComments(); }
+    else { toast.success(!deleted ? "Hidden" : "Restored"); loadComments(); }
   }
 
   async function toggleClosed() {
@@ -320,16 +367,18 @@ function TeaCard({
         <div className="mt-3 border-t border-border pt-3 space-y-2">
           {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments.</div>}
           {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2 bg-white/60 rounded-xl px-3 py-2">
+            <div key={c.id} className={`flex items-start gap-2 rounded-xl px-3 py-2 ${c.deleted ? "bg-[oklch(0.95_0.05_25)]/60 border border-[oklch(0.85_0.1_25)]" : "bg-white/60"}`}>
               <div className="flex-1 text-sm">
-                <div>{c.message}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</div>
+                <div className={c.deleted ? "line-through text-muted-foreground" : ""}>{c.message}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {new Date(c.created_at).toLocaleString()}{c.parent_id && " · reply"}{c.deleted && " · hidden"}
+                </div>
               </div>
               <button
-                onClick={() => deleteComment(c.id)}
-                className="px-2 py-1 rounded-full bg-[oklch(0.92_0.08_25)] text-xs font-semibold"
+                onClick={() => toggleDelete(c.id, c.deleted)}
+                className={`px-2 py-1 rounded-full text-xs font-semibold ${c.deleted ? "bg-[oklch(0.9_0.1_160)]" : "bg-[oklch(0.92_0.08_25)]"}`}
               >
-                Delete
+                {c.deleted ? "Restore" : "Hide"}
               </button>
             </div>
           ))}

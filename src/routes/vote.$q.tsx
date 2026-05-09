@@ -36,7 +36,7 @@ function VoteScreen() {
     (async () => {
       const [stuRes, voteRes] = await Promise.all([
         supabase.from("students").select("*").eq("group_number", g).order("name"),
-        supabase.from("votes").select("voted_for").eq("device_id", getDeviceId()).eq("question", qNum).maybeSingle(),
+        supabase.from("votes").select("voted_for").eq("device_id", getDeviceId()).eq("question", qNum).eq("group_number", g).maybeSingle(),
       ]);
       setStudents((stuRes.data || []) as Student[]);
       if (voteRes.data?.voted_for) setSelected(voteRes.data.voted_for);
@@ -58,7 +58,7 @@ function VoteScreen() {
       .from("votes")
       .upsert(
         { device_id, question: qNum, voted_for: selected, group_number: chosenGroup, updated_at: new Date().toISOString() },
-        { onConflict: "device_id,question" }
+        { onConflict: "device_id,group_number,question" }
       );
     setSaving(false);
     if (error) {

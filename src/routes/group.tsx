@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
-import { getDeviceId, getFingerprint, getChosenGroup, setChosenGroup, isLikelyIncognito } from "@/lib/device";
+import { getDeviceId, getFingerprint, getChosenGroup, setChosenGroup, isLikelyIncognito, MAX_TEA, VOTES_PER_GROUP } from "@/lib/device";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/group")({
@@ -14,7 +14,7 @@ function GroupSelect() {
   const [busy, setBusy] = useState(false);
   const [existing, setExisting] = useState<number | null>(null);
   const [incog, setIncog] = useState(false);
-  const [hasTea, setHasTea] = useState(false);
+  const [teaCount, setTeaCount] = useState(0);
 
   useEffect(() => {
     setExisting(getChosenGroup());
@@ -29,9 +29,29 @@ function GroupSelect() {
         setExisting(data.chosen_group);
         setChosenGroup(data.chosen_group);
       }
-      setHasTea((count ?? 0) > 0);
+      setTeaCount(count ?? 0);
     })();
   }, []);
+
+  // Decide where to go after a group pick:
+  // - If user hasn't completed all 3 votes for THIS group → /vote/q (next missing)
+  // - Else → /tea (if under MAX_TEA)
+  async function routeAfterPick(g: number) {
+    const id = getDeviceId();
+    const { data: vs } = await supabase
+      .from("votes")
+      .select("question")
+      .eq("device_id", id)
+      .eq("group_number", g);
+    const done = new Set((vs || []).map((v) => v.question));
+    for (let q = 1; q <= VOTES_PER_GROUP; q++) {
+      if (!done.has(q)) {
+        nav({ to: "/vote/$q", params: { q: String(q) } });
+        return;
+      }
+    }
+    nav({ to: "/tea" });
+  }
 
   async function pick(g: number) {
     setBusy(true);
@@ -48,11 +68,7 @@ function GroupSelect() {
       return;
     }
     setChosenGroup(g);
-    if (hasTea) {
-      nav({ to: "/tea" });
-    } else {
-      nav({ to: "/vote/$q", params: { q: "1" } });
-    }
+    await routeAfterPick(g);
   }
 
   return (
@@ -62,7 +78,10 @@ function GroupSelect() {
         <div className="animate-fade-up">
           <h1 className="font-display text-3xl font-bold">Which group are you in?</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Pick your group to start voting. Everything is anonymous.
+            Pick your group to vote. You can switch groups any time. Everything is anonymous.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Per group: 3 votes (one per question). Per device: up to {MAX_TEA} teas total.
           </p>
         </div>
 
@@ -73,12 +92,11 @@ function GroupSelect() {
         )}
 
         {existing && (
-          <div className="mt-4 glass-card p-4 text-sm">
-            Last picked: <b>Group {existing}</b>.{" "}
-            {hasTea ? (
-              <Link to="/tea" className="underline font-semibold">Continue to tea →</Link>
-            ) : (
-              <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+          <div className="mt-4 glass-card p-4 text-sm flex flex-wrap gap-3 items-center">
+            <span>Last picked: <b>Group {existing}</b>.</span>
+            <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
+            {teaCount < MAX_TEA && (
+              <Link to="/tea" className="underline font-semibold">Spill tea ({teaCount}/{MAX_TEA}) →</Link>
             )}
           </div>
         )}

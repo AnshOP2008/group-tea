@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { Countdown } from "@/components/Countdown";
 import { supabase } from "@/integrations/supabase/client";
 import { getUnlockTime, isUnlockedServer } from "@/lib/settings";
+import { getDeviceId } from "@/lib/device";
 import { QUESTIONS } from "@/lib/questions";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/results")({
 type Student = { id: string; name: string; roll_number: string; group_number: number };
 type Vote = { question: number; voted_for: string; group_number: number };
 type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null; comments_closed: boolean };
+type TeaWithScore = Tea & { up: number; down: number; score: number; myVote: number };
 
 function Results() {
   const [unlock, setUnlock] = useState<Date | null>(null);
@@ -23,8 +25,8 @@ function Results() {
   const [teaScope, setTeaScope] = useState<"this" | "all">("this");
   const [students, setStudents] = useState<Student[]>([]);
   const [votes, setVotes] = useState<Vote[]>([]);
-  const [tea, setTea] = useState<Tea[]>([]);
-  const [allTea, setAllTea] = useState<Tea[]>([]);
+  const [tea, setTea] = useState<TeaWithScore[]>([]);
+  const [allTea, setAllTea] = useState<TeaWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentSearch, setStudentSearch] = useState("");
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -51,22 +53,60 @@ function Results() {
     supabase.from("students").select("*").then(({ data }) => setAllStudents((data || []) as Student[]));
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
+  async function attachScores(rows: Tea[]): Promise<TeaWithScore[]> {
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.id);
+    const did = getDeviceId();
+    const { data: votes } = await supabase
+      .from("tea_upvotes")
+      .select("tea_id,device_id,value")
+      .in("tea_id", ids);
+    const upMap = new Map<string, { up: number; down: number; mine: number }>();
+    for (const id of ids) upMap.set(id, { up: 0, down: 0, mine: 0 });
+    for (const v of votes || []) {
+      const e = upMap.get(v.tea_id)!;
+      if (v.value > 0) e.up++; else e.down++;
+      if (v.device_id === did) e.mine = v.value;
+    }
+    return rows.map((r) => {
+      const e = upMap.get(r.id)!;
+      return { ...r, up: e.up, down: e.down, score: e.up - e.down, myVote: e.mine };
+    });
+  }
+
+  const loadAll = useCallback(async () => {
     setLoading(true);
-    Promise.all([
+    const [s, v, t, ta] = await Promise.all([
       supabase.from("students").select("*").eq("group_number", group),
       supabase.from("votes").select("question,voted_for,group_number").eq("group_number", group),
-      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("group_number", group).eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
-      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("approved", true).order("priority", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
-    ]).then(([s, v, t, ta]) => {
-      setStudents((s.data || []) as Student[]);
-      setVotes((v.data || []) as Vote[]);
-      setTea((t.data || []) as Tea[]);
-      setAllTea((ta.data || []) as Tea[]);
-      setLoading(false);
-    });
-  }, [group, open]);
+      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("group_number", group).eq("approved", true).order("created_at", { ascending: false }),
+      supabase.from("tea").select("id,group_number,message,created_at,priority,comments_closed").eq("approved", true).order("created_at", { ascending: false }),
+    ]);
+    setStudents((s.data || []) as Student[]);
+    setVotes((v.data || []) as Vote[]);
+    const [tw, taw] = await Promise.all([
+      attachScores((t.data || []) as Tea[]),
+      attachScores((ta.data || []) as Tea[]),
+    ]);
+    // Sort: admin priority asc (nulls last), then score desc, then newest
+    const sorter = (a: TeaWithScore, b: TeaWithScore) => {
+      const ap = a.priority ?? Number.POSITIVE_INFINITY;
+      const bp = b.priority ?? Number.POSITIVE_INFINITY;
+      if (ap !== bp) return ap - bp;
+      if (b.score !== a.score) return b.score - a.score;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    };
+    tw.sort(sorter); taw.sort(sorter);
+    setTea(tw);
+    setAllTea(taw);
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group]);
+
+  useEffect(() => {
+    if (!open) return;
+    loadAll();
+  }, [group, open, loadAll]);
 
   const rankings = useMemo(() => {
     const byQ: Record<number, { student: Student; count: number }[]> = {};
@@ -182,7 +222,7 @@ function Results() {
                 All groups
               </button>
             </div>
-            <TeaList tea={teaScope === "this" ? tea : allTea} showGroup={teaScope === "all"} />
+            <TeaList tea={teaScope === "this" ? tea : allTea} showGroup={teaScope === "all"} onChange={loadAll} />
           </>
         ) : (
           <RankingList list={rankings[qIdx!]} title={QUESTIONS[qIdx! - 1].label} emoji={QUESTIONS[qIdx! - 1].emoji} />
@@ -246,72 +286,123 @@ function RankingList({ list, title, emoji }: { list: { student: Student; count: 
   );
 }
 
-function TeaList({ tea, showGroup = false }: { tea: Tea[]; showGroup?: boolean }) {
+function TeaList({ tea, showGroup = false, onChange }: { tea: TeaWithScore[]; showGroup?: boolean; onChange: () => void }) {
   if (tea.length === 0) return <div className="mt-10 text-center text-muted-foreground">No tea served yet ☕</div>;
   return (
     <div className="mt-5 grid sm:grid-cols-2 gap-3">
       {tea.map((t, i) => (
-        <TeaCard key={t.id} t={t} index={i} showGroup={showGroup} />
+        <TeaCard key={t.id} t={t} index={i} showGroup={showGroup} onVoteChange={onChange} />
       ))}
     </div>
   );
 }
 
-function TeaCard({ t, index, showGroup }: { t: Tea; index: number; showGroup: boolean }) {
-  const [upCount, setUpCount] = useState(0);
-  const [upvoted, setUpvoted] = useState(false);
+type CommentRow = {
+  id: string; tea_id: string; parent_id: string | null; message: string;
+  created_at: string; device_id: string; deleted: boolean;
+};
+type CommentNode = CommentRow & { up: number; down: number; score: number; myVote: number; children: CommentNode[] };
+
+function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index: number; showGroup: boolean; onVoteChange: () => void }) {
+  const [up, setUp] = useState(t.up);
+  const [down, setDown] = useState(t.down);
+  const [myVote, setMyVote] = useState<number>(t.myVote);
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<{ id: string; message: string; created_at: string; device_id: string }[]>([]);
+  const [tree, setTree] = useState<CommentNode[]>([]);
   const [cmt, setCmt] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function loadUpvotes() {
-    const deviceId = (await import("@/lib/device")).getDeviceId();
-    const [{ count }, { data: mine }] = await Promise.all([
-      supabase.from("tea_upvotes").select("id", { count: "exact", head: true }).eq("tea_id", t.id),
-      supabase.from("tea_upvotes").select("id").eq("tea_id", t.id).eq("device_id", deviceId).maybeSingle(),
-    ]);
-    setUpCount(count ?? 0);
-    setUpvoted(!!mine);
+  useEffect(() => { setUp(t.up); setDown(t.down); setMyVote(t.myVote); }, [t.up, t.down, t.myVote]);
+
+  async function vote(v: 1 | -1) {
+    const did = getDeviceId();
+    if (myVote === v) {
+      // toggle off
+      await supabase.from("tea_upvotes").delete().eq("tea_id", t.id).eq("device_id", did);
+      if (v === 1) setUp((n) => n - 1); else setDown((n) => n - 1);
+      setMyVote(0);
+    } else if (myVote === 0) {
+      await supabase.from("tea_upvotes").insert({ tea_id: t.id, device_id: did, value: v });
+      if (v === 1) setUp((n) => n + 1); else setDown((n) => n + 1);
+      setMyVote(v);
+    } else {
+      // switch
+      await supabase.from("tea_upvotes").update({ value: v }).eq("tea_id", t.id).eq("device_id", did);
+      if (v === 1) { setUp((n) => n + 1); setDown((n) => Math.max(0, n - 1)); }
+      else { setDown((n) => n + 1); setUp((n) => Math.max(0, n - 1)); }
+      setMyVote(v);
+    }
+    onVoteChange();
   }
 
   async function loadComments() {
-    const { data } = await supabase
-      .from("tea_comments")
-      .select("id,message,created_at,device_id")
-      .eq("tea_id", t.id)
-      .order("created_at", { ascending: true });
-    setComments(data || []);
+    const did = getDeviceId();
+    const [{ data: cs }, { data: cvs }] = await Promise.all([
+      supabase.from("tea_comments")
+        .select("id,tea_id,parent_id,message,created_at,device_id,deleted")
+        .eq("tea_id", t.id)
+        .order("created_at", { ascending: true }),
+      // we'll filter in JS by comment ids
+      supabase.from("tea_comment_votes").select("comment_id,device_id,value"),
+    ]);
+    const all: CommentRow[] = (cs || []) as CommentRow[];
+    // Hide deleted comments AND any descendants (whole subtree gone for users)
+    const byId = new Map(all.map((c) => [c.id, c]));
+    function isHiddenByAncestor(c: CommentRow): boolean {
+      let cur: CommentRow | undefined = c;
+      while (cur) {
+        if (cur.deleted) return true;
+        if (!cur.parent_id) return false;
+        cur = byId.get(cur.parent_id);
+      }
+      return false;
+    }
+    const visible = all.filter((c) => !isHiddenByAncestor(c));
+    const visibleIds = new Set(visible.map((c) => c.id));
+    const voteMap = new Map<string, { up: number; down: number; mine: number }>();
+    for (const id of visibleIds) voteMap.set(id, { up: 0, down: 0, mine: 0 });
+    for (const v of cvs || []) {
+      if (!visibleIds.has(v.comment_id)) continue;
+      const e = voteMap.get(v.comment_id)!;
+      if (v.value > 0) e.up++; else e.down++;
+      if (v.device_id === did) e.mine = v.value;
+    }
+    const nodes: CommentNode[] = visible.map((c) => {
+      const e = voteMap.get(c.id)!;
+      return { ...c, up: e.up, down: e.down, score: e.up - e.down, myVote: e.mine, children: [] };
+    });
+    const map = new Map(nodes.map((n) => [n.id, n]));
+    const roots: CommentNode[] = [];
+    for (const n of nodes) {
+      if (n.parent_id && map.has(n.parent_id)) map.get(n.parent_id)!.children.push(n);
+      else roots.push(n);
+    }
+    function sortRec(arr: CommentNode[]) {
+      arr.sort((a, b) => b.score - a.score || new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      for (const c of arr) sortRec(c.children);
+    }
+    sortRec(roots);
+    setTree(roots);
   }
 
-  useEffect(() => { loadUpvotes(); /* eslint-disable-next-line */ }, []);
   useEffect(() => { if (showComments) loadComments(); /* eslint-disable-next-line */ }, [showComments]);
 
-  async function toggleUpvote() {
-    const { getDeviceId } = await import("@/lib/device");
-    const deviceId = getDeviceId();
-    if (upvoted) {
-      await supabase.from("tea_upvotes").delete().eq("tea_id", t.id).eq("device_id", deviceId);
-    } else {
-      await supabase.from("tea_upvotes").insert({ tea_id: t.id, device_id: deviceId });
-    }
-    loadUpvotes();
-  }
-
-  async function postComment() {
-    if (!cmt.trim()) return;
+  async function postComment(parentId: string | null, text: string) {
+    if (!text.trim()) return;
     setBusy(true);
-    const { getDeviceId } = await import("@/lib/device");
     const { error } = await supabase.from("tea_comments").insert({
       tea_id: t.id,
       device_id: getDeviceId(),
-      message: cmt.trim().slice(0, 300),
+      message: text.trim().slice(0, 300),
+      parent_id: parentId,
     });
     setBusy(false);
     if (error) { toast.error("Couldn't post"); return; }
-    setCmt("");
+    if (parentId === null) setCmt("");
     loadComments();
   }
+
+  const score = up - down;
 
   return (
     <div className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${index * 30}ms` }}>
@@ -325,15 +416,26 @@ function TeaCard({ t, index, showGroup }: { t: Tea; index: number; showGroup: bo
       <p className="mt-1 leading-snug">{t.message}</p>
       <div className="mt-2 text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          onClick={toggleUpvote}
-          className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition ${
-            upvoted ? "bg-[oklch(0.85_0.15_25)] text-white border-transparent" : "bg-white/70 border-border"
-          }`}
-        >
-          {upvoted ? "❤️" : "🤍"} {upCount}
-        </button>
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <div className="inline-flex items-center rounded-full border border-border bg-white/70 overflow-hidden">
+          <button
+            onClick={() => vote(1)}
+            className={`px-3 py-1.5 text-sm font-semibold transition ${myVote === 1 ? "bg-[oklch(0.85_0.15_25)] text-white" : "hover:bg-white"}`}
+            aria-label="Upvote"
+          >
+            {myVote === 1 ? "❤️" : "🤍"} {up}
+          </button>
+          <span className={`px-2 text-xs font-bold ${score > 0 ? "text-[oklch(0.5_0.18_25)]" : score < 0 ? "text-muted-foreground" : "text-muted-foreground"}`}>
+            {score > 0 ? `+${score}` : score}
+          </span>
+          <button
+            onClick={() => vote(-1)}
+            className={`px-3 py-1.5 text-sm font-semibold transition ${myVote === -1 ? "bg-[oklch(0.6_0.15_260)] text-white" : "hover:bg-white"}`}
+            aria-label="Downvote"
+          >
+            ⬇ {down}
+          </button>
+        </div>
         <button
           onClick={() => setShowComments((s) => !s)}
           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/70 border border-border"
@@ -344,13 +446,17 @@ function TeaCard({ t, index, showGroup }: { t: Tea; index: number; showGroup: bo
 
       {showComments && (
         <div className="mt-3 border-t border-border pt-3">
-          <div className="space-y-2 max-h-56 overflow-y-auto">
-            {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
-            {comments.map((c) => (
-              <div key={c.id} className="text-sm bg-white/60 rounded-xl px-3 py-2">
-                <div>{c.message}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</div>
-              </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {tree.length === 0 && <div className="text-xs text-muted-foreground">No comments yet.</div>}
+            {tree.map((c) => (
+              <CommentItem
+                key={c.id}
+                node={c}
+                depth={0}
+                onChange={loadComments}
+                onReply={(pid, text) => postComment(pid, text)}
+                disabled={t.comments_closed}
+              />
             ))}
           </div>
           {t.comments_closed ? (
@@ -363,11 +469,98 @@ function TeaCard({ t, index, showGroup }: { t: Tea; index: number; showGroup: bo
                 placeholder="Write a comment…"
                 className="flex-1 px-3 py-2 rounded-full bg-white/90 border border-border text-sm"
               />
-              <button onClick={postComment} disabled={busy || !cmt.trim()} className="pastel-btn text-sm disabled:opacity-50">
+              <button onClick={() => postComment(null, cmt)} disabled={busy || !cmt.trim()} className="pastel-btn text-sm disabled:opacity-50">
                 Post
               </button>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentItem({ node, depth, onChange, onReply, disabled }: {
+  node: CommentNode;
+  depth: number;
+  onChange: () => void;
+  onReply: (parentId: string, text: string) => void;
+  disabled: boolean;
+}) {
+  const [up, setUp] = useState(node.up);
+  const [down, setDown] = useState(node.down);
+  const [myVote, setMyVote] = useState<number>(node.myVote);
+  const [replying, setReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  useEffect(() => { setUp(node.up); setDown(node.down); setMyVote(node.myVote); }, [node.up, node.down, node.myVote]);
+
+  async function vote(v: 1 | -1) {
+    const did = getDeviceId();
+    if (myVote === v) {
+      await supabase.from("tea_comment_votes").delete().eq("comment_id", node.id).eq("device_id", did);
+      if (v === 1) setUp((n) => n - 1); else setDown((n) => n - 1);
+      setMyVote(0);
+    } else if (myVote === 0) {
+      await supabase.from("tea_comment_votes").insert({ comment_id: node.id, device_id: did, value: v });
+      if (v === 1) setUp((n) => n + 1); else setDown((n) => n + 1);
+      setMyVote(v);
+    } else {
+      await supabase.from("tea_comment_votes").update({ value: v }).eq("comment_id", node.id).eq("device_id", did);
+      if (v === 1) { setUp((n) => n + 1); setDown((n) => Math.max(0, n - 1)); }
+      else { setDown((n) => n + 1); setUp((n) => Math.max(0, n - 1)); }
+      setMyVote(v);
+    }
+    onChange();
+  }
+
+  const score = up - down;
+  const indent = Math.min(depth, 4) * 12;
+
+  return (
+    <div style={{ marginLeft: indent }} className="border-l-2 border-border/60 pl-2">
+      <div className="text-sm bg-white/60 rounded-xl px-3 py-2">
+        <div>{node.message}</div>
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] text-muted-foreground">{new Date(node.created_at).toLocaleString()}</span>
+          <div className="inline-flex items-center rounded-full border border-border bg-white/70 overflow-hidden">
+            <button onClick={() => vote(1)} className={`px-2 py-0.5 text-xs font-semibold ${myVote === 1 ? "bg-[oklch(0.85_0.15_25)] text-white" : ""}`}>
+              {myVote === 1 ? "❤️" : "🤍"} {up}
+            </button>
+            <span className="px-1 text-[10px] font-bold">{score > 0 ? `+${score}` : score}</span>
+            <button onClick={() => vote(-1)} className={`px-2 py-0.5 text-xs font-semibold ${myVote === -1 ? "bg-[oklch(0.6_0.15_260)] text-white" : ""}`}>
+              ⬇ {down}
+            </button>
+          </div>
+          {!disabled && (
+            <button onClick={() => setReplying((s) => !s)} className="text-[11px] underline text-muted-foreground">
+              {replying ? "Cancel" : "Reply"}
+            </button>
+          )}
+        </div>
+        {replying && !disabled && (
+          <div className="mt-2 flex gap-2">
+            <input
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value.slice(0, 300))}
+              placeholder="Reply…"
+              className="flex-1 px-2 py-1 rounded-full bg-white/90 border border-border text-xs"
+            />
+            <button
+              onClick={() => { onReply(node.id, replyText); setReplyText(""); setReplying(false); }}
+              disabled={!replyText.trim()}
+              className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
+            >
+              Post
+            </button>
+          </div>
+        )}
+      </div>
+      {node.children.length > 0 && (
+        <div className="mt-1 space-y-1">
+          {node.children.map((c) => (
+            <CommentItem key={c.id} node={c} depth={depth + 1} onChange={onChange} onReply={onReply} disabled={disabled} />
+          ))}
         </div>
       )}
     </div>
