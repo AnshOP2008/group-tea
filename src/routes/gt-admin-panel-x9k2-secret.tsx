@@ -282,7 +282,7 @@ function TeaCard({
   async function loadComments() {
     const { data } = await supabase
       .from("tea_comments")
-      .select("id,tea_id,message,created_at")
+      .select("id,tea_id,message,created_at,deleted,parent_id")
       .eq("tea_id", t.id)
       .order("created_at", { ascending: true });
     setComments((data || []) as Comment[]);
@@ -293,10 +293,10 @@ function TeaCard({
     // eslint-disable-next-line
   }, [showCmts]);
 
-  async function deleteComment(id: string) {
-    const { error } = await supabase.from("tea_comments").delete().eq("id", id);
+  async function toggleDelete(id: string, deleted: boolean) {
+    const { error } = await supabase.from("tea_comments").update({ deleted: !deleted }).eq("id", id);
     if (error) toast.error(error.message);
-    else { toast.success("Comment deleted"); loadComments(); }
+    else { toast.success(!deleted ? "Hidden" : "Restored"); loadComments(); }
   }
 
   async function toggleClosed() {
