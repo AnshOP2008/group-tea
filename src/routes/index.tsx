@@ -68,13 +68,19 @@ function Index()
             <Countdown target={unlock} />
           </div>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            // {chosen ? (
-            //   <Link to="/vote/$q" params={{ q: "1" }} className="pastel-btn">
-            //     Continue voting · Group {chosen}
-            //   </Link>
-            // ) : (
+                        {/* 
+            {chosen ? (
+              <Link to="/vote/$q" params={{ q: "1" }} className="pastel-btn">
+                Continue voting · Group {chosen}
+              </Link>
+            ) : (
               <Link to="/group" className="pastel-btn">Pick your group →</Link>
-            // )}
+            )}
+            */}
+            
+            <Link to="/group" className="pastel-btn">
+              Pick your group →
+            </Link>
             <Link to="/results" className="px-6 py-3 rounded-full bg-white/70 border border-border font-semibold hover:bg-white transition">
               Peek at results
             </Link>
