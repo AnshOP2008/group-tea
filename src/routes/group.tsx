@@ -10,12 +10,11 @@ export const Route = createFileRoute("/group")({
 });
 
 function GroupSelect() {
-  const MAX_TEA = 5;
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [existing, setExisting] = useState<number | null>(null);
   const [incog, setIncog] = useState(false);
-  const [teaCount, setTeaCount] = useState<number>(0);
+  const [hasTea, setHasTea] = useState(false);
 
   useEffect(() => {
     setExisting(getChosenGroup());
@@ -30,17 +29,11 @@ function GroupSelect() {
         setExisting(data.chosen_group);
         setChosenGroup(data.chosen_group);
       }
-      setTeaCount(count ?? 0);
+      setHasTea((count ?? 0) > 0);
     })();
   }, []);
 
-  const reachedLimit = teaCount >= MAX_TEA;
-
   async function pick(g: number) {
-    if (reachedLimit) {
-      toast("You've used all 5 attempts on this device 💜");
-      return;
-    }
     setBusy(true);
     const id = getDeviceId();
     const fp = getFingerprint();
@@ -55,8 +48,7 @@ function GroupSelect() {
       return;
     }
     setChosenGroup(g);
-    // If they've already voted (tea count > 0 means they completed a round before), skip to tea.
-    if (teaCount > 0) {
+    if (hasTea) {
       nav({ to: "/tea" });
     } else {
       nav({ to: "/vote/$q", params: { q: "1" } });
@@ -70,11 +62,8 @@ function GroupSelect() {
         <div className="animate-fade-up">
           <h1 className="font-display text-3xl font-bold">Which group are you in?</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            You can pick a group each round. You get up to {MAX_TEA} tea attempts per device — and yes, you can change groups between attempts.
+            Pick your group to start voting. Everything is anonymous.
           </p>
-          <div className="mt-2 text-xs chip inline-block">
-            {Math.max(0, MAX_TEA - teaCount)} of {MAX_TEA} attempts left
-          </div>
         </div>
 
         {incog && (
@@ -83,16 +72,10 @@ function GroupSelect() {
           </div>
         )}
 
-        {reachedLimit && (
-          <div className="mt-4 glass-card p-4 text-sm">
-            ✅ You've used all {MAX_TEA} attempts. Thanks for playing!
-          </div>
-        )}
-
-        {existing && !reachedLimit && (
+        {existing && (
           <div className="mt-4 glass-card p-4 text-sm">
             Last picked: <b>Group {existing}</b>.{" "}
-            {teaCount > 0 ? (
+            {hasTea ? (
               <Link to="/tea" className="underline font-semibold">Continue to tea →</Link>
             ) : (
               <Link to="/vote/$q" params={{ q: "1" }} className="underline font-semibold">Continue voting →</Link>
@@ -106,11 +89,10 @@ function GroupSelect() {
             return (
               <button
                 key={g}
-                disabled={busy || reachedLimit}
+                disabled={busy}
                 onClick={() => pick(g)}
                 className={`relative aspect-square rounded-2xl font-display text-2xl font-bold transition-all
                   ${isPicked ? "bg-gradient-to-br from-[oklch(0.78_0.13_305)] to-[oklch(0.82_0.1_340)] text-white shadow-[var(--shadow-soft)]" :
-                    reachedLimit ? "bg-muted/60 text-muted-foreground" :
                     "bg-white/80 hover:bg-white border border-border hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"}`}
               >
                 {g}

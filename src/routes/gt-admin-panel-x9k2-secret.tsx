@@ -7,7 +7,8 @@ export const Route = createFileRoute("/gt-admin-panel-x9k2-secret")({
   component: Admin,
 });
 
-type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null };
+type Tea = { id: string; group_number: number; message: string; approved: boolean; rejected: boolean; created_at: string; priority: number | null; comments_closed: boolean };
+type Comment = { id: string; tea_id: string; message: string; created_at: string };
 
 function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -227,6 +228,37 @@ function TeaCard({
   setPriority: (id: string, priority: number | null) => void;
 }) {
   const [pri, setPri] = useState<string>(t.priority != null ? String(t.priority) : "");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [showCmts, setShowCmts] = useState(false);
+  const [closed, setClosed] = useState<boolean>(t.comments_closed);
+
+  async function loadComments() {
+    const { data } = await supabase
+      .from("tea_comments")
+      .select("id,tea_id,message,created_at")
+      .eq("tea_id", t.id)
+      .order("created_at", { ascending: true });
+    setComments((data || []) as Comment[]);
+  }
+
+  useEffect(() => {
+    if (showCmts) loadComments();
+    // eslint-disable-next-line
+  }, [showCmts]);
+
+  async function deleteComment(id: string) {
+    const { error } = await supabase.from("tea_comments").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Comment deleted"); loadComments(); }
+  }
+
+  async function toggleClosed() {
+    const next = !closed;
+    const { error } = await supabase.from("tea").update({ comments_closed: next }).eq("id", t.id);
+    if (error) toast.error(error.message);
+    else { setClosed(next); toast.success(next ? "Comments closed" : "Comments opened"); }
+  }
+
   return (
     <div className="glass-card p-4">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -266,7 +298,43 @@ function TeaCard({
             ✗ Reject
           </button>
         )}
+        {t.approved && (
+          <>
+            <button
+              onClick={toggleClosed}
+              className="px-4 py-2 rounded-full bg-white/80 border border-border font-semibold text-sm"
+            >
+              {closed ? "🔒 Comments closed" : "💬 Open"}
+            </button>
+            <button
+              onClick={() => setShowCmts((s) => !s)}
+              className="px-4 py-2 rounded-full bg-white/80 border border-border font-semibold text-sm"
+            >
+              {showCmts ? "Hide" : "View"} comments
+            </button>
+          </>
+        )}
       </div>
+
+      {showCmts && (
+        <div className="mt-3 border-t border-border pt-3 space-y-2">
+          {comments.length === 0 && <div className="text-xs text-muted-foreground">No comments.</div>}
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 bg-white/60 rounded-xl px-3 py-2">
+              <div className="flex-1 text-sm">
+                <div>{c.message}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString()}</div>
+              </div>
+              <button
+                onClick={() => deleteComment(c.id)}
+                className="px-2 py-1 rounded-full bg-[oklch(0.92_0.08_25)] text-xs font-semibold"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

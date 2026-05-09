@@ -2,43 +2,35 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
-import { getChosenGroup, getDeviceId } from "@/lib/device";
+import { getChosenGroup, getDeviceId, hasSubmittedTea, markTeaSubmitted } from "@/lib/device";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tea")({
   component: TeaSubmit,
 });
 
-const MAX_TEA_PER_DEVICE = 5;
-
 function TeaSubmit() {
   const nav = useNavigate();
   const [group, setGroup] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
-  const [count, setCount] = useState<number | null>(null);
+  const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  async function refreshCount() {
-    const { count: c } = await supabase
-      .from("tea")
-      .select("id", { count: "exact", head: true })
-      .eq("device_id", getDeviceId());
-    setCount(c ?? 0);
-  }
 
   useEffect(() => {
     const g = getChosenGroup();
     if (!g) { nav({ to: "/group" }); return; }
     setGroup(g);
-    refreshCount();
+    (async () => {
+      const { count } = await supabase
+        .from("tea")
+        .select("id", { count: "exact", head: true })
+        .eq("device_id", getDeviceId());
+      if ((count ?? 0) > 0 || hasSubmittedTea()) setDone(true);
+    })();
   }, [nav]);
 
   async function send() {
     if (!group || !msg.trim()) return;
-    if ((count ?? 0) >= MAX_TEA_PER_DEVICE) {
-      toast("You've used all 5 tea submissions for this device 💜");
-      return;
-    }
     setBusy(true);
     const { error } = await supabase.from("tea").insert({
       device_id: getDeviceId(),
@@ -50,13 +42,10 @@ function TeaSubmit() {
       toast.error("Couldn't submit. Try again.");
       return;
     }
-    setMsg("");
+    markTeaSubmitted();
+    setDone(true);
     toast.success("Tea steeped ☕ — pending review");
-    refreshCount();
   }
-
-  const remaining = count === null ? null : Math.max(0, MAX_TEA_PER_DEVICE - count);
-  const done = remaining === 0;
 
   return (
     <div className="min-h-screen">
@@ -66,18 +55,12 @@ function TeaSubmit() {
           <div className="text-xs font-semibold text-muted-foreground">Group {group} · Anonymous</div>
           <h1 className="font-display text-3xl font-bold mt-1">Spill some tea ☕</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Up to {MAX_TEA_PER_DEVICE} messages per device. 150 character max each. No edits, no take-backs. Be playful, not toxic — moderators review before publishing.
+            One message per device. 150 characters max. Be playful, not toxic — moderators review before publishing.
           </p>
-
-          {remaining !== null && (
-            <div className="mt-3 text-xs chip inline-block">
-              {remaining} of {MAX_TEA_PER_DEVICE} left
-            </div>
-          )}
 
           {done ? (
             <div className="mt-5 p-4 rounded-2xl bg-[oklch(0.93_0.07_160)]/60 border border-[oklch(0.85_0.1_160)]">
-              ✅ You've used all {MAX_TEA_PER_DEVICE} submissions. Thanks for the tea!
+              ✅ You've submitted your tea. Thanks for the spill!
             </div>
           ) : (
             <>
@@ -97,12 +80,6 @@ function TeaSubmit() {
             </>
           )}
         </div>
-
-        {!done && count !== null && count > 0 && (
-          <div className="mt-4 text-center text-sm">
-            <Link to="/group" className="underline text-muted-foreground">Pick a different group for your next tea →</Link>
-          </div>
-        )}
 
         <div className="mt-6 text-center">
           <Link to="/wait" className="underline text-sm text-muted-foreground">See countdown →</Link>

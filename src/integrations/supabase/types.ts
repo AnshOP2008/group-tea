@@ -101,6 +101,7 @@ export type Database = {
       tea: {
         Row: {
           approved: boolean
+          comments_closed: boolean
           created_at: string
           device_id: string
           group_number: number
@@ -111,6 +112,7 @@ export type Database = {
         }
         Insert: {
           approved?: boolean
+          comments_closed?: boolean
           created_at?: string
           device_id: string
           group_number: number
@@ -121,6 +123,7 @@ export type Database = {
         }
         Update: {
           approved?: boolean
+          comments_closed?: boolean
           created_at?: string
           device_id?: string
           group_number?: number
@@ -130,6 +133,67 @@ export type Database = {
           rejected?: boolean
         }
         Relationships: []
+      }
+      tea_comments: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          message: string
+          tea_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          message: string
+          tea_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          message?: string
+          tea_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tea_comments_tea_id_fkey"
+            columns: ["tea_id"]
+            isOneToOne: false
+            referencedRelation: "tea"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tea_upvotes: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          tea_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          tea_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          tea_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tea_upvotes_tea_id_fkey"
+            columns: ["tea_id"]
+            isOneToOne: false
+            referencedRelation: "tea"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       votes: {
         Row: {
