@@ -1,41 +1,53 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Header } from "@/components/Header";
-import { Countdown } from "@/components/Countdown";
-import { getUnlockTime } from "@/lib/settings";
-import { getChosenGroup } from "@/lib/device";
-import { supabase } from "@/integrations/supabase/client";
+import{createFileRoute, Link} from "@tanstack/react-router";
+import{useEffect, useState} from "react";
+import{Header} from "@/components/Header";
+import{Countdown} from "@/components/Countdown";
+import{getUnlockTime} from "@/lib/settings";
+import{getChosenGroup} from "@/lib/device";
+import{supabase} from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+    component : Index,
 });
 
-function Index() {
-  const [unlock, setUnlock] = useState<Date | null>(null);
-  const [chosen, setChosen] = useState<number | null>(null);
-  useEffect(() => {
-    getUnlockTime().then(setUnlock);
-    const local = getChosenGroup();
-    setChosen(local);
-    // Track visit (once per page load)
-    try {
-      const did = (typeof window !== "undefined" && localStorage.getItem("gt_device_id")) || null;
-      supabase.from("site_visits").insert({ path: "/", device_id: did });
-    } catch {}
-    // Verify the local choice still exists server-side; if data was wiped, reset local state
-    (async () => {
-      try {
-        const did = typeof window !== "undefined" ? localStorage.getItem("gt_device_id") : null;
-        if (!did || !local) return;
-        const { data } = await supabase.from("devices").select("chosen_group").eq("device_id", did).maybeSingle();
-        if (!data?.chosen_group) {
-          localStorage.removeItem("gt_chosen_group");
-          localStorage.removeItem("gt_tea_submitted");
-          setChosen(null);
+function Index()
+{
+    const[unlock, setUnlock] = useState<Date | null>(null);
+    const[chosen, setChosen] = useState<number | null>(null);
+    useEffect(() = > {
+        getUnlockTime().then(setUnlock);
+        const local = getChosenGroup();
+        setChosen(local);
+        // Track visit (once per page load)
+        try
+        {
+            const did = (typeof window != = "undefined" && localStorage.getItem("gt_device_id")) || null;
+            supabase.from("site_visits").insert({path : "/", device_id : did});
         }
-      } catch {}
-    })();
-  }, []);
+        catch
+        {
+        }
+        // Verify the local choice still exists server-side; if data was wiped, reset local state
+        (async() = > {
+            try
+            {
+                const did = typeof window != = "undefined" ? localStorage.getItem("gt_device_id") : null;
+                if (!did || !local)
+                    return;
+                const {data} = await supabase.from("devices").select("chosen_group").eq("device_id", did).maybeSingle();
+        if (!data?.chosen_group)
+        {
+            localStorage.removeItem("gt_chosen_group");
+            localStorage.removeItem("gt_tea_submitted");
+            setChosen(null);
+        }
+            }
+            catch
+            {
+            }
+        })();
+    },
+              []);
 
   return (
     <div className="min-h-screen">
@@ -56,13 +68,13 @@ function Index() {
             <Countdown target={unlock} />
           </div>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            {chosen ? (
-              <Link to="/vote/$q" params={{ q: "1" }} className="pastel-btn">
-                Continue voting · Group {chosen}
-              </Link>
-            ) : (
+            // {chosen ? (
+            //   <Link to="/vote/$q" params={{ q: "1" }} className="pastel-btn">
+            //     Continue voting · Group {chosen}
+            //   </Link>
+            // ) : (
               <Link to="/group" className="pastel-btn">Pick your group →</Link>
-            )}
+            // )}
             <Link to="/results" className="px-6 py-3 rounded-full bg-white/70 border border-border font-semibold hover:bg-white transition">
               Peek at results
             </Link>
