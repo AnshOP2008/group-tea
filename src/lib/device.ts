@@ -55,6 +55,9 @@ export function setChosenGroup(g: number) {
   localStorage.setItem(GROUP_KEY, String(g));
 }
 
+export const MAX_TEA = 5;
+export const VOTES_PER_GROUP = 3;
+
 export function hasSubmittedTea(): boolean {
   return typeof window !== "undefined" && localStorage.getItem(TEA_KEY) === "1";
 }
