@@ -70,7 +70,7 @@ function Results() {
     }
     return rows.map((r) => {
       const e = upMap.get(r.id)!;
-      return { ...r, up: e.up, down: e.down, score: e.up - e.down, myVote: e.mine };
+      return { ...r, up: e.up, down: e.down, score: e.up + e.down, myVote: e.mine };
     });
   }
 
