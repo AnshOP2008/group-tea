@@ -15,7 +15,7 @@ export const Route = createFileRoute("/results")({
 type Student = { id: string; name: string; roll_number: string; group_number: number };
 type Vote = { question: number; voted_for: string; group_number: number };
 type Tea = { id: string; group_number: number; message: string; created_at: string; priority: number | null; comments_closed: boolean };
-type TeaWithScore = Tea & { up: number; down: number; score: number; myVote: number };
+type TeaWithScore = Tea & { up: number; down: number; commentCount: number; score: number; myVote: number };
 
 function Results() {
   const [unlock, setUnlock] = useState<Date | null>(null);
@@ -57,20 +57,48 @@ function Results() {
     if (rows.length === 0) return [];
     const ids = rows.map((r) => r.id);
     const did = getDeviceId();
-    const { data: votes } = await supabase
-      .from("tea_upvotes")
-      .select("tea_id,device_id,value")
-      .in("tea_id", ids);
+    
+    const [{ data: votes }, { data: comments }] = await Promise.all([
+      supabase
+        .from("tea_upvotes")
+        .select("tea_id,device_id,value")
+        .in("tea_id", ids),
+      supabase
+        .from("tea_comments")
+        .select("tea_id")
+        .in("tea_id", ids)
+        .eq("deleted", false)
+    ]);
+
     const upMap = new Map<string, { up: number; down: number; mine: number }>();
-    for (const id of ids) upMap.set(id, { up: 0, down: 0, mine: 0 });
+    const commentMap = new Map<string, number>();
+    
+    for (const id of ids) {
+      upMap.set(id, { up: 0, down: 0, mine: 0 });
+      commentMap.set(id, 0);
+    }
+    
     for (const v of votes || []) {
       const e = upMap.get(v.tea_id)!;
       if (v.value > 0) e.up++; else e.down++;
       if (v.device_id === did) e.mine = v.value;
     }
+
+    for (const c of comments || []) {
+      commentMap.set(c.tea_id, commentMap.get(c.tea_id)! + 1);
+    }
+
     return rows.map((r) => {
       const e = upMap.get(r.id)!;
-      return { ...r, up: e.up, down: e.down, score: e.up + e.down, myVote: e.mine };
+      const cCount = commentMap.get(r.id)!;
+      return { 
+        ...r, 
+        up: e.up, 
+        down: e.down, 
+        commentCount: cCount,
+        score: e.up + e.down + cCount, 
+        myVote: e.mine 
+      };
     });
   }
 
@@ -93,7 +121,7 @@ function Results() {
       const ap = a.priority ?? Number.POSITIVE_INFINITY;
       const bp = b.priority ?? Number.POSITIVE_INFINITY;
       
-      if (b.score !==0 ||  a.score!==0) return b.score - a.score;
+      if (b.score !== 0 || a.score !== 0) return b.score - a.score;
       if (ap !== bp) return ap - bp;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     };
@@ -309,14 +337,14 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
   const [down, setDown] = useState(t.down);
   const [myVote, setMyVote] = useState<number>(t.myVote);
   const [showComments, setShowComments] = useState(false);
-  const [commentCount, setCommentCount] = useState<number>(0);
+  const [commentCount, setCommentCount] = useState<number>(t.commentCount || 0);
   const [tree, setTree] = useState<CommentNode[]>([]);
   const [cmt, setCmt] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { setUp(t.up); setDown(t.down); setMyVote(t.myVote); }, [t.up, t.down, t.myVote]);
+  useEffect(() => { setUp(t.up); setDown(t.down); setMyVote(t.myVote); setCommentCount(t.commentCount); }, [t.up, t.down, t.myVote, t.commentCount]);
 
-  // Fetch initial comment count on mount
+  // Fetch initial comment count on mount just in case there are fresh comments
   useEffect(() => {
     supabase
       .from("tea_comments")
@@ -420,7 +448,8 @@ function TeaCard({ t, index, showGroup, onVoteChange }: { t: TeaWithScore; index
     loadComments();
   }
 
-  const score = up - down;
+  // Update logic to calculate score as upvotes + downvotes + number of comments
+  const score = up + down + commentCount;
 
   return (
     <div className="glass-card p-4 animate-fade-up" style={{ animationDelay: `${index * 30}ms` }}>
